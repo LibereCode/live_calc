@@ -36,22 +36,18 @@ impl Operator {
 }
 
 #[derive(Debug)]
+/// # TODO:
+/// - [ ] `RawKind::Bracket`
+/// - [ ] `RawKind::Dot`
 pub enum RawKind {
-    Bracket(bool),
+    Bracket(bool), // TODO:
     Digit(u8),
-    Dot(char),
+    Dot(char), // TODO:
     Operator(Operator),
     Other,
 }
 
 pub const CLEAR_LINE: &str = "\x1b[2K";
-
-// /// TODO:
-// pub fn calculate(v: Vec<CalcKind>) {
-//     for c in v {
-//
-//     }
-// }
 
 /// # TODO:
 /// - [ ] [?] Instead of full line reprint, just change print one char.
@@ -98,13 +94,13 @@ fn calculate(kinds: &[RawKind]) -> String {
     let mut current_nr = 0f32;
     for k in kinds {
         match k {
-            RawKind::Bracket(b) => {}
+            RawKind::Bracket(_b) => {} // TODO:
             RawKind::Digit(u) => {
                 let nr = f32::from(u.to_owned());
                 current_nr *= 10f32;
                 current_nr += nr;
             }
-            RawKind::Dot(c) => {}
+            RawKind::Dot(_c) => {} // TODO:
             RawKind::Operator(o) => {
                 numbers.push((operator, current_nr));
                 current_nr = 0f32;
@@ -175,13 +171,12 @@ pub fn live_calc() -> io::Result<()> {
     let mut mode = Mode::Insert;
     let mut mode_symbol = "";
     let mut raw = String::new();
-    let mut parsed_string;
-    let mut parsed = "";
+    let mut parsed = String::new();
     let mut kinds: Vec<RawKind> = Vec::new();
     let mut sum = 0f64.to_string();
 
     println!("-----\r");
-    redraw_line(mode_symbol, &raw, parsed);
+    redraw_line(mode_symbol, &raw, &parsed);
     loop {
         if let Event::Key(key) = event::read()? {
             // Exit on <CTRL+c>
@@ -190,7 +185,7 @@ pub fn live_calc() -> io::Result<()> {
             {
                 break;
             }
-            redraw_line(mode_symbol, &raw, parsed);
+            redraw_line(mode_symbol, &raw, &parsed);
             match mode {
                 Mode::Insert => {
                     mode_symbol = "";
@@ -198,7 +193,7 @@ pub fn live_calc() -> io::Result<()> {
                         // TODO: all of these should add to a vec of symbols/numbers, then
                         // use a calculate function.
                         KeyCode::Char(c) => {
-                            raw += c.to_string().as_str();
+                            raw.push(c);
                             if c.is_numeric() {
                                 kinds.push(RawKind::Digit(c as u8 - b'0'));
                             } else if c == '+' {
@@ -248,20 +243,11 @@ pub fn live_calc() -> io::Result<()> {
                 }
             }
 
-            // for c in raw.chars() {
-            //     if c.is_numeric() {
-            //         kinds.push(CalcKind::Digit(c.to_digit(10).unwrap_or_default()));
-            //     } else if ['+', '-', '=', '/'].contains(&c) {
-            //         kinds.push(CalcKind::Operator(c));
-            //     }
-            // }
-            // TODO:
             sum = calculate(&kinds);
-            parsed_string = parse_raw_kinds(&kinds);
-            parsed_string.push_str(" = ");
-            parsed_string.push_str(&sum);
-            parsed = parsed_string.as_str();
-            redraw_line(mode_symbol, &raw, parsed);
+            parsed = parse_raw_kinds(&kinds);
+            parsed.push_str(" = ");
+            parsed.push_str(&sum);
+            redraw_line(mode_symbol, &raw, &parsed);
         }
     }
     println!("\n\n\r\n-----\r");
