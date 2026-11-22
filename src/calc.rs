@@ -1,6 +1,6 @@
 use crate::parse::RawKind;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Operator {
     Add,
     Sub,

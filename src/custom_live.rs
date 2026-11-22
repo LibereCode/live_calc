@@ -4,7 +4,7 @@
 //! TODO: Move this to it's own project
 
 use crate::{
-    calc::{Operator, calculate},
+    calc::calculate,
     parse::{self, RawKind, parse_raw_kinds},
 };
 use std::io;

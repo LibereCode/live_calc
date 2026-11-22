@@ -1,7 +1,7 @@
 //! TODO: This module should also be the one that converts raw input string to `RawKind`
 use crate::calc::Operator;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 /// # TODO:
 /// - [ ] `RawKind::Bracket`
 /// - [ ] `RawKind::Dot`
