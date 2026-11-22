@@ -15,7 +15,7 @@
       packages = {
         ## NOTE Using default packageWrapping
         basic = pkgs.rustPlatform.buildRustPackage (finalAttrs: {
-          pname = "CHANGE_ME"; # TODO:
+          pname = "live_calc";
           version = "0.0.1";
           src = "${self}";
           cargoHash = "sha256-iUIfILIRCVB87SjvxLTikptBm2A0f25uitEKfZZ+C7k=";

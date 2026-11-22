@@ -1,10 +1,11 @@
 use std::io;
 
 mod calc;
-mod live;
+mod custom_live;
 mod parse;
 
 fn main() -> io::Result<()> {
-    live::live_calc()?;
+    custom_live::live_calc()?;
+
     Ok(())
 }

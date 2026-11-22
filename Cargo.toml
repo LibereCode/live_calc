@@ -1,5 +1,5 @@
 [package]
-name = "CHANGE_ME"  # TODO:
+name = "live_calc"
 version = "0.1.0"
 edition = "2024"
 

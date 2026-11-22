@@ -5,14 +5,14 @@
 
 use crate::{
     calc::{Operator, calculate},
-    parse::{RawKind, parse_raw_kinds},
+    parse::{self, RawKind, parse_raw_kinds},
 };
 use std::io;
 
 use crossterm::{
     self, cursor,
     event::{self, Event, KeyCode},
-    terminal,
+    terminal::{self},
 };
 
 pub enum Mode {
@@ -22,13 +22,37 @@ pub enum Mode {
 
 pub const CLEAR_LINE: &str = "\x1b[2K";
 
+/// Most variables and the while loops are meant for formatting,
+/// where they create newlines when a line >= terminal width.
+///
 /// # TODO:
 /// - [ ] [?] Instead of full line reprint, just change print one char.
+/// - [ ] Fix this boggy print so it works for 4+ lines
+///     - Or just collapse line when it is too long?
 fn redraw_line(mode_symbol: &str, raw: &str, parsed: &str) {
-    println!("\r\n\n{CLEAR_LINE}    {parsed}");
+    let mut raw_line = String::new() + mode_symbol + " > " + raw;
+    let mut parsed_line = String::new() + "    " + parsed;
+    let mut parsed_len = parsed_line.len();
+    let mut raw_len = raw_line.len();
+    let mut parsed_lines = 1;
+    let mut raw_lines = 1;
+    let clear_new_line = format!("\n\r{CLEAR_LINE}");
+    let (col, _row) = terminal::size().unwrap_or_default();
+    let col = col as usize;
+    while parsed_len >= col {
+        parsed_line.insert_str(parsed_lines as usize * col - 1, &clear_new_line);
+        parsed_lines += 1;
+        parsed_len -= col;
+    }
+    while raw_len >= col {
+        raw_line.insert_str(raw_lines as usize * col - 1, &clear_new_line);
+        raw_lines += 1;
+        raw_len -= col;
+    }
+    println!("\r\n\n{CLEAR_LINE}{parsed_line}");
     println!(
-        "{}\r{CLEAR_LINE}{mode_symbol} > {raw}{}",
-        cursor::MoveUp(3),
+        "{}\r{CLEAR_LINE}{raw_line}{}",
+        cursor::MoveUp(raw_lines + parsed_lines + 1),
         cursor::MoveUp(1),
     );
 }
@@ -69,23 +93,10 @@ pub fn live_calc() -> io::Result<()> {
                     match key.code {
                         // TODO: all of these should add to a vec of symbols/numbers, then
                         // use a calculate function.
+                        //
                         KeyCode::Char(c) => {
                             raw.push(c);
-                            if c.is_numeric() {
-                                kinds.push(RawKind::Digit(c as u8 - b'0'));
-                            } else if c == '+' {
-                                kinds.push(RawKind::Operator(Operator::Add));
-                            } else if c == '-' {
-                                kinds.push(RawKind::Operator(Operator::Sub));
-                            } else if c == '*' {
-                                kinds.push(RawKind::Operator(Operator::Mul));
-                            } else if c == '/' {
-                                kinds.push(RawKind::Operator(Operator::Div));
-                            // } else if ['+', '-', '=', '/'].contains(&c) {
-                            //     kinds.push(RawKind::Operator(c));
-                            } else {
-                                kinds.push(RawKind::Other);
-                            }
+                            parse::char_to_rawkind(c, &mut kinds);
                         }
                         KeyCode::Backspace => {
                             delete_char(&mut raw, &mut kinds);
@@ -130,7 +141,6 @@ pub fn live_calc() -> io::Result<()> {
     println!("\n\n\r\n-----\r");
 
     terminal::disable_raw_mode()?;
-    println!("{:?}", raw.chars());
-    println!("{kinds:?}");
+    // println!("{:?}\n{kinds:?}", raw.chars()); // DEBUG
     Ok(())
 }

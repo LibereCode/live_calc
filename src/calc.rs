@@ -20,7 +20,6 @@ impl Operator {
 }
 
 /// # TODO:
-/// - [ ] Move this to a new **module** (_parse.rs_ ?)
 /// - [ ] Parse `RawKind.Dot` ('.', decimals)
 /// - [ ] Parse `RawKind.Bracket` ('('')', for pedmas)
 pub fn calculate(kinds: &[RawKind]) -> String {
@@ -51,9 +50,6 @@ pub fn calculate(kinds: &[RawKind]) -> String {
     pedmas(&numbers).to_string()
 }
 
-/// # TODO:
-/// - [x] Should follow PEDMAS
-/// - [ ] Move this to a new **module** (_parse.rs_ ?)
 pub fn pedmas(numbers: &[(&Operator, f32)]) -> f64 {
     let mut sum = 0f64;
     let mut numbers_pedmas: Vec<(&Operator, f64)> = Vec::new();
@@ -89,6 +85,6 @@ pub fn pedmas(numbers: &[(&Operator, f32)]) -> f64 {
     // TEST DEBUG
     // println!("{numbers:?}");
     // println!("{numbers_pedmas:?}");
-    //
+
     sum
 }
