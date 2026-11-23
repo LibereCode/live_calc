@@ -16,17 +16,15 @@
         ## NOTE Using default packageWrapping
         basic = pkgs.rustPlatform.buildRustPackage (finalAttrs: {
           pname = "live_calc";
-          version = "0.0.1";
+          version = "0.2.0";
           src = "${self}";
-          cargoHash = "sha256-iUIfILIRCVB87SjvxLTikptBm2A0f25uitEKfZZ+C7k=";
+          cargoHash = "sha256-ZgPTtT8NHSjGKkcxCEvkbueeb1yvcnKEQFBi+PY43zk=";
           meta = with lib; {
-            description = "This is my preferred rust-development setup.";
-            license = licenses.unlicense;
+            description = "A live tui calculater, written in rust. Uses ratatui for tui.";
+            license = licenses.eupl12;
             maintainers = [ ];
           };
         });
-
-        #NOTE: Prefer ../naersk.nix or (better) ../crane.nix
 
         ## $ nix build .
         default = config.packages.my-crate; # Crane

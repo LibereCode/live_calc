@@ -2,25 +2,23 @@
 
 ## setup
 
-```sh
-nix flake init --template templates#rust
-
-devenv init
-# edit devenv
-
-devenv inputs add git-hooks github:cachix/git-hooks.nix
-devenv inputs add treefmt-nix github:numtide/treefmt-nix
-
+```sh shell
+# Working directory is this directory:
 devenv allow
-z - ; z -
+```
 
-cargo init
+```vim cmdline
+;; edition first file with `neovim`; in cmd-line:
+:trust
 ```
 
 ## TODO
 
-Change name in these files:
+Implement
 
-- [ ] <./Cargo.toml>
-- [ ] <./Cargo.toml>
-- [ ] <./nix/packages/default.nix>
+- [ ] _decimals_ (dots)
+- [ ] _brackets_
+- [ ] _variables_
+- [ ] Scroll _history_
+- [ ] The _better-normal-mode-delete-char_ I did and have saved somewhere...
+- [ ] Better _UI-layout_

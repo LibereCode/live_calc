@@ -10,8 +10,7 @@
   imports = [
     ./packages
 
-    ./naersk.nix
-    ./crane.nix # <- preferred
+    ./crane.nix
   ];
 
   ## XXX What? Why ???
