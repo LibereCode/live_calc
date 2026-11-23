@@ -1,4 +1,10 @@
-# hello-rust
+# live calc
+
+> Calc is short for "calculator", btw.
+
+... and now it's live!
+
+Made with rusty rats.
 
 ## setup
 
@@ -22,3 +28,8 @@ Implement
 - [ ] Scroll _history_
 - [ ] The _better-normal-mode-delete-char_ I did and have saved somewhere...
 - [ ] Better _UI-layout_
+
+## LICENSE
+
+Copyleft (🄯) 2026 LibereCode. All Rights Reserved.\
+Licensed under the **EUPL-1.2**. See [the LICENSE](./LICENSE) for details.
