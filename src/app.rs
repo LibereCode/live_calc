@@ -1,6 +1,6 @@
 use std::io;
 
-use crossterm::event::{self, KeyCode, KeyEventKind};
+use crossterm::event::{self, KeyCode, KeyEventKind, KeyEventState, KeyModifiers};
 use ratatui::{
     DefaultTerminal, Frame,
     layout::{Constraint, Layout, Position},
@@ -146,6 +146,11 @@ impl App {
             terminal.draw(|frame| self.render(frame))?;
 
             if let Some(key) = event::read()?.as_key_press_event() {
+                // universal exit on <CTRL+c>
+                if key.code == KeyCode::Char('c') && key.modifiers == KeyModifiers::CONTROL {
+                    return Ok(self);
+                }
+
                 match self.mode {
                     InputMode::Normal => match key.code {
                         KeyCode::Char('i' | 'a') => {
@@ -226,21 +231,24 @@ impl App {
             .block(Block::bordered().title("Equation"));
         frame.render_widget(equation, equation_area);
 
-        match self.mode {
-            // Hide the cursor. `Frame` does this by default, so we don't need to do anything here
-            InputMode::Normal => {}
-
-            // Make the cursor visible and ask ratatui to put it at the specified coordinates after
-            // rendering
-            #[expect(clippy::cast_possible_truncation)]
-            InputMode::Insert => frame.set_cursor_position(Position::new(
-                // Draw the cursor at the current position in the input field.
-                // This position can be controlled via the left and right arrow key
-                input_area.x + self.character_index as u16 + 1,
-                // Move one line down, from the border to the input line
-                input_area.y + 1,
-            )),
-        }
+        // match self.mode {
+        //     // Hide the cursor. `Frame` does this by default, so we don't need to do anything here
+        //     InputMode::Normal => {}
+        //
+        //     // Make the cursor visible and ask ratatui to put it at the specified coordinates after
+        //     // rendering
+        //     InputMode::Insert =>
+        // __________________________
+        // Always show cursor instead
+        #[expect(clippy::cast_possible_truncation)]
+        frame.set_cursor_position(Position::new(
+            // Draw the cursor at the current position in the input field.
+            // This position can be controlled via the left and right arrow key
+            input_area.x + self.character_index as u16 + 1,
+            // Move one line down, from the border to the input line
+            input_area.y + 1,
+        ));
+        // , }
 
         let messages: Vec<ListItem> = self
             .messages

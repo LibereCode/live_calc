@@ -44,6 +44,9 @@ pub fn char_to_rawkind(c: char, kinds: &mut Vec<RawKind>) {
 }
 
 trait SuperScript {
+    /// # TODO:
+    /// - [x] Fix parsing for $ 10^0.1 $ (currently '.' is unhandled)
+    /// - [ ] Fix parsing for _operators_ and _brackets_, ie: $ 10^(5/4-2*3) $
     fn to_superscript(self) -> String;
 }
 
@@ -56,6 +59,14 @@ impl SuperScript for u8 {
             .collect()
     }
 }
+impl SuperScript for char {
+    fn to_superscript(self) -> String {
+        match self {
+            '.' => '·'.to_string(),
+            c => c.to_string(),
+        }
+    }
+}
 
 /// # TODO:
 /// - [ ] [?] Prehaps Also create another `parse_calc_kinds()`,
@@ -64,6 +75,7 @@ impl SuperScript for u8 {
 pub fn parse_raw_kinds(kinds: &[RawKind]) -> String {
     let mut buf = String::new();
     let mut is_exponent = false;
+    let mut number_after_exponent = true;
     for k in kinds {
         match k {
             RawKind::Bracket(b) => buf.push_str(&b.to_string()),
@@ -73,12 +85,24 @@ pub fn parse_raw_kinds(kinds: &[RawKind]) -> String {
                 } else {
                     buf.push_str(&u.to_string());
                 }
+                number_after_exponent = true;
             }
-            RawKind::Dot => buf.push('.'),
+            RawKind::Dot => {
+                if is_exponent {
+                    buf.push_str(&'.'.to_superscript());
+                } else {
+                    buf.push('.');
+                }
+            }
             RawKind::Operator(o) => {
                 if let Operator::Exp = o {
                     is_exponent = true;
+                    number_after_exponent = false;
                 } else {
+                    // NOTE: TEMPORARY
+                    if !number_after_exponent {
+                        buf.push('^');
+                    }
                     buf.push(' ');
                     buf.push(o.get_sign());
                     buf.push(' ');

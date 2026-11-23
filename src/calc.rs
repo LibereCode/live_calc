@@ -57,6 +57,9 @@ pub fn calculate(kinds: &[RawKind]) -> String {
             RawKind::Bracket(_b) => {} // TODO:
             RawKind::Digit(u) => {
                 let nr = f32::from(u.to_owned());
+                if current_number.is_nan() {
+                    current_number = 0f32;
+                }
                 if is_decimal {
                     decimals_len += 1;
                     let new_decimal = nr / 10f32.powi(decimals_len);
@@ -85,7 +88,8 @@ pub fn calculate(kinds: &[RawKind]) -> String {
                 }
                 numbers.push((operator, current_number));
                 operator = o;
-                current_number = 0f32;
+                // TEST: [?] maybe having a `NaN` is too aggressive?
+                current_number = f32::NAN;
                 is_decimal = false;
                 digit_after_operator = false;
             }
@@ -116,14 +120,12 @@ pub fn pedmas(numbers: &[(&Operator, f32)]) -> f64 {
         let n = f64::from(*n);
         let p = match o {
             Operator::Exp => {
-                let (prev_o, prev_n) = numbers_pe.pop().unwrap_or((&Operator::Add, 0f64));
-                local_res = prev_n.powf(n);
-                // local_res = if prev_o == &Operator::Sub {
-                //     prev_n.powf(-n)
-                // } else {
-                //     prev_n.powf(n)
-                // };
-                (prev_o, local_res)
+                if let Some((prev_o, prev_n)) = numbers_pe.pop() {
+                    local_res = prev_n.powf(n);
+                    (prev_o, local_res)
+                } else {
+                    return f64::NAN;
+                }
             }
             _ => (*o, n),
         };
@@ -135,24 +137,26 @@ pub fn pedmas(numbers: &[(&Operator, f32)]) -> f64 {
     for (o, n) in numbers_pe {
         let p = match o {
             Operator::Mul => {
-                let (prev_o, prev_n) = numbers_pedm.pop().unwrap_or((&Operator::Add, 0f64));
-                local_res = prev_n * n;
-                // local_res = if prev_o == &Operator::Sub {
-                //     prev_n * -n
-                // } else {
-                //     prev_n * n
-                // };
-                (prev_o, local_res)
+                // let (prev_o, prev_n) = numbers_pedm.pop().unwrap_or((&Operator::Add, 0f64));
+                // local_res = prev_n * n;
+                // (prev_o, local_res)
+                if let Some((prev_o, prev_n)) = numbers_pedm.pop() {
+                    local_res = prev_n * n;
+                    (prev_o, local_res)
+                } else {
+                    return f64::NAN;
+                }
             }
             Operator::Div => {
-                let (prev_o, prev_n) = numbers_pedm.pop().unwrap_or((&Operator::Add, 0f64));
-                local_res = prev_n / n;
-                // local_res = if prev_o == &Operator::Sub {
-                //     prev_n / -n
-                // } else {
-                //     prev_n / n
-                // };
-                (prev_o, local_res)
+                // let (prev_o, prev_n) = numbers_pedm.pop().unwrap_or((&Operator::Add, 0f64));
+                // local_res = prev_n / n;
+                // (prev_o, local_res)
+                if let Some((prev_o, prev_n)) = numbers_pedm.pop() {
+                    local_res = prev_n / n;
+                    (prev_o, local_res)
+                } else {
+                    return f64::NAN;
+                }
             }
             _ => (o, n),
         };
