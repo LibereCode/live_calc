@@ -1,7 +1,5 @@
 //! Using `crossterms::terminal::enable_raw_mode`
 //! to do stuff based on _raw-input-events_.
-//!
-//! TODO: Move this to it's own project
 
 use crate::{
     calc::calculate,

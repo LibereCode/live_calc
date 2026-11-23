@@ -1,6 +1,6 @@
 use crate::parse::RawKind;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Operator {
     /// $ a + b $
     Add,
@@ -92,8 +92,12 @@ pub fn pedmas(numbers: &[(&Operator, f32)]) -> f64 {
         let n = f64::from(*n);
         let p = match o {
             Operator::Exp => {
-                let (prev_o, prev_n) = numbers_pe.pop().unwrap_or((&Operator::Add, 1f64));
-                local_res = prev_n.powf(n);
+                let (prev_o, prev_n) = numbers_pe.pop().unwrap_or((&Operator::Add, 0f64));
+                local_res = if prev_o == &Operator::Sub {
+                    prev_n.powf(-n)
+                } else {
+                    prev_n.powf(n)
+                };
                 (prev_o, local_res)
             }
             _ => (*o, n),
@@ -106,13 +110,21 @@ pub fn pedmas(numbers: &[(&Operator, f32)]) -> f64 {
     for (o, n) in numbers_pe {
         let p = match o {
             Operator::Mul => {
-                let (prev_o, prev_n) = numbers_pedm.pop().unwrap_or((&Operator::Add, 1f64));
-                local_res = prev_n * n;
+                let (prev_o, prev_n) = numbers_pedm.pop().unwrap_or((&Operator::Add, 0f64));
+                local_res = if prev_o == &Operator::Sub {
+                    prev_n * -n
+                } else {
+                    prev_n * n
+                };
                 (prev_o, local_res)
             }
             Operator::Div => {
-                let (prev_o, prev_n) = numbers_pedm.pop().unwrap_or((&Operator::Add, 1f64));
-                local_res = prev_n / n;
+                let (prev_o, prev_n) = numbers_pedm.pop().unwrap_or((&Operator::Add, 0f64));
+                local_res = if prev_o == &Operator::Sub {
+                    prev_n / -n
+                } else {
+                    prev_n / n
+                };
                 (prev_o, local_res)
             }
             _ => (o, n),

@@ -22,7 +22,7 @@ pub enum InputMode {
 /// App holds the state of the application
 pub struct App {
     /// Current value of the input box
-    raw: String,
+    pub raw: String,
     /// Position of cursor in the editor area.
     character_index: usize,
     /// Current input mode
@@ -35,7 +35,7 @@ pub struct App {
     /// `raw` as a parsed `String`
     parsed: String,
     /// Each `char` as a `RawKind`
-    kinds: Vec<RawKind>,
+    pub kinds: Vec<RawKind>,
     /// The sum of equation as a `kStringk`
     sum: String,
 }
@@ -64,6 +64,8 @@ impl App {
         self.character_index = self.clamp_cursor(cursor_moved_right);
     }
 
+    /// # FIXME:
+    /// - [ ] Insert `RawKind` at correct index in `self.kinds` (currently just appends)
     pub fn enter_char(&mut self, c: char) {
         let index = self.byte_index();
         self.raw.insert(index, c);
@@ -133,7 +135,13 @@ impl App {
         self.reset_cursor();
     }
 
-    pub fn run(mut self, terminal: &mut DefaultTerminal) -> io::Result<()> {
+    /// # TODO:
+    /// - [ ] Scroll _history_ in _normal_ mode with _j|k_ keys
+    ///
+    /// # FIXME:
+    /// - [ ] Show **cursor-position** in _normal_ mode
+    /// - [ ] Delete char on cursor in _normal_ mode (instead of the one before)
+    pub fn run(mut self, terminal: &mut DefaultTerminal) -> io::Result<Self> {
         loop {
             terminal.draw(|frame| self.render(frame))?;
 
@@ -148,7 +156,7 @@ impl App {
                         KeyCode::Char('h') => self.move_cursor_left(),
                         KeyCode::Char('l') => self.move_cursor_right(),
                         KeyCode::Char('q') => {
-                            return Ok(());
+                            return Ok(self);
                         }
                         _ => {}
                     },

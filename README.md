@@ -9,12 +9,14 @@ Made with rusty rats.
 ## setup
 
 ```sh shell
+# (interactive shell)
 # Working directory is this directory:
 devenv allow
 ```
 
 ```vim cmdline
-;; edition first file with `neovim`; in cmd-line:
+" (cmd-line)
+" edition first file with `neovim`
 :trust
 ```
 

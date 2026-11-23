@@ -19,5 +19,5 @@
   #       };
   #     };
   #   };
-  #NOTE: instead use formatter from **devenv**
+  # NOTE instead use formatter from **devenv**
 }
