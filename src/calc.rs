@@ -34,6 +34,8 @@ impl Operator {
 ///
 /// # TODO:
 /// - [x] Parse `RawKind.Dot` (\['.'\], decimals)
+/// - [x] Parse _negative_ numbers
+/// - [x] BUG where $ --a = ---a = ----a = ... $
 /// - [ ] Parse `RawKind.Bracket` (\['(',')'\], for pedmas)
 pub fn calculate(kinds: &[RawKind]) -> String {
     // add each number as a pair of the operator before and it's value.
@@ -42,7 +44,14 @@ pub fn calculate(kinds: &[RawKind]) -> String {
     let mut operator: &Operator = &Operator::Add;
     let mut current_number = 0f32;
     let mut decimals_len: i32 = 0;
+
+    // Below variable is used to enabling decimal-number input.
     let mut is_decimal = false;
+
+    // 2 variables below enables negative numbers
+    let mut is_negative = false;
+    let mut digit_after_operator = false;
+
     for k in kinds {
         match k {
             RawKind::Bracket(_b) => {} // TODO:
@@ -56,15 +65,29 @@ pub fn calculate(kinds: &[RawKind]) -> String {
                     current_number *= 10f32;
                     current_number += nr;
                 }
+                // Enables negative numbers, example:
+                // $ 8 * -2 $
+                if is_negative {
+                    current_number = -current_number;
+                    is_negative = false;
+                }
+                digit_after_operator = true;
             }
             RawKind::Dot => {
                 is_decimal = true;
             }
             RawKind::Operator(o) => {
+                if !digit_after_operator && o == &Operator::Sub {
+                    // essentially treat the '-' as $ -a $
+                    // instead of like $ a - b $
+                    is_negative = !is_negative;
+                    continue;
+                }
                 numbers.push((operator, current_number));
-                current_number = 0f32;
                 operator = o;
+                current_number = 0f32;
                 is_decimal = false;
+                digit_after_operator = false;
             }
             RawKind::Other => {}
         }
@@ -76,9 +99,10 @@ pub fn calculate(kinds: &[RawKind]) -> String {
 
 /// Calculate the result by following **PEDMAS**.
 ///
-/// # FIXME:
-/// - [ ] **Negative** _exp_/_mul_/_div_ NOT implemented
+/// # FIXED:
+/// - [x] **Negative** _exp_/_mul_/_div_ NOT implemented
 ///   Also current solution (_unwrap or =1_) sucks
+///   - [ ] [?] Prehaps need to fix defaults still?
 pub fn pedmas(numbers: &[(&Operator, f32)]) -> f64 {
     let mut sum = 0f64;
     let mut local_res: f64;
@@ -93,11 +117,12 @@ pub fn pedmas(numbers: &[(&Operator, f32)]) -> f64 {
         let p = match o {
             Operator::Exp => {
                 let (prev_o, prev_n) = numbers_pe.pop().unwrap_or((&Operator::Add, 0f64));
-                local_res = if prev_o == &Operator::Sub {
-                    prev_n.powf(-n)
-                } else {
-                    prev_n.powf(n)
-                };
+                local_res = prev_n.powf(n);
+                // local_res = if prev_o == &Operator::Sub {
+                //     prev_n.powf(-n)
+                // } else {
+                //     prev_n.powf(n)
+                // };
                 (prev_o, local_res)
             }
             _ => (*o, n),
@@ -111,20 +136,22 @@ pub fn pedmas(numbers: &[(&Operator, f32)]) -> f64 {
         let p = match o {
             Operator::Mul => {
                 let (prev_o, prev_n) = numbers_pedm.pop().unwrap_or((&Operator::Add, 0f64));
-                local_res = if prev_o == &Operator::Sub {
-                    prev_n * -n
-                } else {
-                    prev_n * n
-                };
+                local_res = prev_n * n;
+                // local_res = if prev_o == &Operator::Sub {
+                //     prev_n * -n
+                // } else {
+                //     prev_n * n
+                // };
                 (prev_o, local_res)
             }
             Operator::Div => {
                 let (prev_o, prev_n) = numbers_pedm.pop().unwrap_or((&Operator::Add, 0f64));
-                local_res = if prev_o == &Operator::Sub {
-                    prev_n / -n
-                } else {
-                    prev_n / n
-                };
+                local_res = prev_n / n;
+                // local_res = if prev_o == &Operator::Sub {
+                //     prev_n / -n
+                // } else {
+                //     prev_n / n
+                // };
                 (prev_o, local_res)
             }
             _ => (o, n),
