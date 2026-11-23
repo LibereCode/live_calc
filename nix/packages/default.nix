@@ -16,9 +16,9 @@
         ## NOTE Using default packageWrapping
         basic = pkgs.rustPlatform.buildRustPackage (finalAttrs: {
           pname = "live_calc";
-          version = "0.2.0";
+          version = "0.2.1";
           src = "${self}";
-          cargoHash = "sha256-ZgPTtT8NHSjGKkcxCEvkbueeb1yvcnKEQFBi+PY43zk=";
+          cargoHash = "sha256-MRUYnMe65PqsERk6yoe49QcmDLIVs35NHRPKts7+dTw=";
           meta = with lib; {
             description = "A live tui calculater, written in rust. Uses ratatui for tui.";
             license = licenses.eupl12;

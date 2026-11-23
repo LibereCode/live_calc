@@ -18,16 +18,31 @@ devenv allow
 :trust
 ```
 
+## Features
+
+1. Base operators (+, -, \*, /)
+1. Exponent (^)
+1. Respect [PEDMAS](https://en.wikipedia.org/wiki/Order_of_operations)
+   - For implemented features, have yet to implement other PEDMAS related features.
+     See below.
+1. Can input decimals.
+
 ## TODO
 
-Implement
+### Implement
 
-- [ ] _decimals_ (dots)
+- [x] _decimals_ (dots)
+  - [ ] Better _floating numbers_ (rounding? More precise?)
+- [x] _exponents_
 - [ ] _brackets_
 - [ ] _variables_
 - [ ] Scroll _history_
+
+### FIXME
+
 - [ ] The _better-normal-mode-delete-char_ I did and have saved somewhere...
 - [ ] Better _UI-layout_
+- [ ] Bug where \*|/|^ with negative numbers doesn't work.
 
 ## LICENSE
 
