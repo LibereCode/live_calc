@@ -8,7 +8,7 @@ use crate::calc::Operator;
 pub enum RawKind {
     Bracket(bool), // TODO:
     Digit(u8),
-    Dot(char), // TODO:
+    Dot, // TODO:
     Operator(Operator),
     Other,
 }
@@ -25,6 +25,8 @@ pub fn char_to_rawkind(c: char, kinds: &mut Vec<RawKind>) {
         kinds.push(RawKind::Operator(Operator::Mul));
     } else if c == '/' {
         kinds.push(RawKind::Operator(Operator::Div));
+    } else if c == '.' {
+        kinds.push(RawKind::Dot);
     // } else if ['+', '-', '=', '/'].contains(&c) {
     //     kinds.push(RawKind::Operator(c));
     } else {
@@ -41,7 +43,7 @@ pub fn parse_raw_kinds(kinds: &[RawKind]) -> String {
         match k {
             RawKind::Bracket(b) => buf.push_str(&b.to_string()),
             RawKind::Digit(u) => buf.push_str(&u.to_string()),
-            RawKind::Dot(c) => buf.push(c.to_owned()),
+            RawKind::Dot => buf.push('.'),
             RawKind::Operator(o) => {
                 buf.push(' ');
                 buf.push(o.get_sign());

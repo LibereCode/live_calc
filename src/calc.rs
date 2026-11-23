@@ -27,25 +27,36 @@ pub fn calculate(kinds: &[RawKind]) -> String {
     let mut numbers: Vec<(&Operator, f32)> = Vec::new();
     // first number will be a '+' by default
     let mut operator: &Operator = &Operator::Add;
-    let mut current_nr = 0f32;
+    let mut current_number = 0f32;
+    let mut decimals_len: i32 = 0;
+    let mut is_decimal = false;
     for k in kinds {
         match k {
             RawKind::Bracket(_b) => {} // TODO:
             RawKind::Digit(u) => {
                 let nr = f32::from(u.to_owned());
-                current_nr *= 10f32;
-                current_nr += nr;
+                if is_decimal {
+                    decimals_len += 1;
+                    let new_decimal = nr / 10f32.powi(decimals_len);
+                    current_number += new_decimal;
+                } else {
+                    current_number *= 10f32;
+                    current_number += nr;
+                }
             }
-            RawKind::Dot(_c) => {} // TODO:
+            RawKind::Dot => {
+                is_decimal = true;
+            }
             RawKind::Operator(o) => {
-                numbers.push((operator, current_nr));
-                current_nr = 0f32;
+                numbers.push((operator, current_number));
+                current_number = 0f32;
                 operator = o;
+                is_decimal = false;
             }
             RawKind::Other => {}
         }
     }
-    numbers.push((operator, current_nr));
+    numbers.push((operator, current_number));
 
     pedmas(&numbers).to_string()
 }
