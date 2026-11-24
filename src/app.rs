@@ -9,7 +9,7 @@ use ratatui::{
     widgets::{Block, List, ListItem, Paragraph},
 };
 
-use crate::new_eval::evaluate;
+use crate::eval::evaluate;
 
 pub enum InputMode {
     Normal,

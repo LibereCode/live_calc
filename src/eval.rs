@@ -1,6 +1,6 @@
 use crate::{
-    new_parse::{Expr, Op, Parser},
-    new_tokenize::{ParseError, tokenize},
+    parse::{Expr, Op, Parser},
+    tokenize::{ParseError, tokenize},
 };
 
 pub fn eval(expr: &Expr) -> Result<f64, ParseError> {

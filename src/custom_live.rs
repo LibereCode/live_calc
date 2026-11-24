@@ -1,10 +1,6 @@
 //! Using `crossterms::terminal::enable_raw_mode`
 //! to do stuff based on _raw-input-events_.
 
-use crate::{
-    calc::calculate,
-    parse::{self, RawKind, parse_raw_kinds},
-};
 use std::io;
 
 use crossterm::{
@@ -12,6 +8,8 @@ use crossterm::{
     event::{self, Event, KeyCode},
     terminal::{self},
 };
+
+use crate::eval::evaluate;
 
 pub enum Mode {
     Normal,
@@ -55,11 +53,6 @@ fn redraw_line(mode_symbol: &str, raw: &str, parsed: &str) {
     );
 }
 
-fn delete_char(raw: &mut String, kinds: &mut Vec<RawKind>) {
-    raw.pop();
-    kinds.pop();
-}
-
 /// TODO:
 /// - [ ] On Enter:
 ///     - Push calculation to history as a tuple: `(calc_body, sum)`
@@ -70,12 +63,11 @@ pub fn live_calc() -> io::Result<()> {
     let mut mode = Mode::Insert;
     let mut mode_symbol = "";
     let mut raw = String::new();
-    let mut parsed = String::new();
-    let mut kinds: Vec<RawKind> = Vec::new();
-    let mut sum = 0f64.to_string();
+    let mut message = String::new();
+    let mut eval = 0f64;
 
     println!("-----\r");
-    redraw_line(mode_symbol, &raw, &parsed);
+    redraw_line(mode_symbol, &raw, &message);
     loop {
         if let Event::Key(key) = event::read()? {
             // Exit on <CTRL+c>
@@ -84,7 +76,7 @@ pub fn live_calc() -> io::Result<()> {
             {
                 break;
             }
-            redraw_line(mode_symbol, &raw, &parsed);
+            redraw_line(mode_symbol, &raw, &message);
             match mode {
                 Mode::Insert => {
                     mode_symbol = "";
@@ -94,17 +86,14 @@ pub fn live_calc() -> io::Result<()> {
                         //
                         KeyCode::Char(c) => {
                             raw.push(c);
-                            parse::char_to_rawkind(c, &mut kinds);
                         }
-                        KeyCode::Backspace => {
-                            delete_char(&mut raw, &mut kinds);
-                        }
+                        KeyCode::Backspace => _ = raw.pop(),
                         KeyCode::Esc => {
                             mode = Mode::Normal;
                             mode_symbol = ""; // <- to update quicker
                         }
                         KeyCode::Enter => {
-                            println!("{CLEAR_LINE}\n\n{CLEAR_LINE}{}\r{sum}", cursor::MoveUp(2));
+                            println!("{CLEAR_LINE}\n\n{CLEAR_LINE}{}\r{eval}", cursor::MoveUp(2));
                         }
                         _ => {}
                     }
@@ -117,9 +106,7 @@ pub fn live_calc() -> io::Result<()> {
                             mode = Mode::Insert;
                             mode_symbol = ""; // <- to update quicker
                         }
-                        KeyCode::Char('x' | 'X') => {
-                            delete_char(&mut raw, &mut kinds);
-                        }
+                        KeyCode::Char('x' | 'X') => _ = raw.pop(),
                         KeyCode::Char('q') => {
                             break;
                         }
@@ -129,11 +116,9 @@ pub fn live_calc() -> io::Result<()> {
                 }
             }
 
-            sum = calculate(&kinds);
-            parsed = parse_raw_kinds(&kinds);
-            parsed.push_str(" = ");
-            parsed.push_str(&sum);
-            redraw_line(mode_symbol, &raw, &parsed);
+            eval = evaluate(&raw).unwrap_or_default();
+            message = raw.clone() + " = " + &eval.to_string();
+            redraw_line(mode_symbol, &raw, &message);
         }
     }
     println!("\n\n\r\n-----\r");

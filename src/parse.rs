@@ -1,116 +1,147 @@
-//! TODO: This module should also be the one that converts raw input string to `RawKind`
-use crate::calc::Operator;
+use crate::tokenize::{ParseError, Token};
 
-#[derive(Debug, Clone)]
-/// # TODO:
-/// - [ ] `RawKind::Bracket`
-/// - [ ] `RawKind::Dot`
-pub enum RawKind {
-    /// Will be true if inside brackets, ie after opening brackets '(',
-    /// and false outside/after closing brackets ')'
-    /// # TODO:
-    Bracket(bool),
-    /// A collection of _digits_ builds a _number_, separated by `calc::Operator`
-    Digit(u8),
-    /// All _digits_ after the _dot_ in the current _number_ will be interpreted as _decimals_.
-    Dot,
-    /// `calc::Operator::get_sign()` will convert `calc::Operator` _enum_ into a _char_.
-    Operator(Operator),
-    /// Will be displayed as a _raw_, but NOT displayed in the _equation_.
-    Other,
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum Op {
+    Add,
+    Sub,
+    Mul,
+    Div,
+    Pow,
 }
 
-/// Will push a parsed `RawKind(char)` to the vec `kinds`
-pub fn char_to_rawkind(c: char, kinds: &mut Vec<RawKind>) {
-    if c.is_numeric() {
-        kinds.push(RawKind::Digit(c as u8 - b'0'));
-    } else if c == '+' {
-        kinds.push(RawKind::Operator(Operator::Add));
-    } else if c == '-' {
-        kinds.push(RawKind::Operator(Operator::Sub));
-    } else if c == '*' {
-        kinds.push(RawKind::Operator(Operator::Mul));
-    } else if c == '/' {
-        kinds.push(RawKind::Operator(Operator::Div));
-    } else if c == '^' {
-        kinds.push(RawKind::Operator(Operator::Exp));
-    } else if c == '.' {
-        kinds.push(RawKind::Dot);
-    // } else if ['+', '-', '=', '/'].contains(&c) {
-    //     kinds.push(RawKind::Operator(c));
-    } else {
-        kinds.push(RawKind::Other);
+#[derive(Debug)]
+pub enum Expr {
+    Num(f64),
+    Neg(Box<Expr>),
+    Binary(Box<Expr>, Op, Box<Expr>),
+}
+
+/// Grammar:
+///   expr    := term (('+' | '-') term)*
+///   term    := unary (('*' | '/') unary)*
+///   unary   := '-' unary | power
+///   power   := primary ('^' unary)?
+///   primary := NUMBER | '(' expr ')'
+pub struct Parser {
+    tokens: Vec<Token>,
+    pos: usize,
+}
+
+impl Parser {
+    pub fn new(tokens: Vec<Token>) -> Self {
+        Parser { tokens, pos: 0 }
     }
-}
 
-trait SuperScript {
-    /// # TODO:
-    /// - [x] Fix parsing for $ 10^0.1 $ (currently '.' is unhandled)
-    /// - [ ] Fix parsing for _operators_ and _brackets_, ie: $ 10^(5/4-2*3) $
-    fn to_superscript(self) -> String;
-}
-
-impl SuperScript for u8 {
-    fn to_superscript(self) -> String {
-        let superscript = ['⁰', '¹', '²', '³', '⁴', '⁵', '⁶', '⁷', '⁸', '⁹'];
-        self.to_string()
-            .chars()
-            .map(|c| superscript[c.to_digit(10).unwrap_or_default() as usize])
-            .collect()
+    fn peek(&self) -> Option<&Token> {
+        self.tokens.get(self.pos)
     }
-}
-impl SuperScript for char {
-    fn to_superscript(self) -> String {
-        match self {
-            '.' => '·'.to_string(),
-            c => c.to_string(),
+
+    /// Return current position's token, and advance position by +1.
+    fn advance(&mut self) -> Option<Token> {
+        let tok = self.peek().cloned();
+        if tok.is_some() {
+            self.pos += 1;
+        }
+        tok
+    }
+
+    pub fn parse(mut self) -> Result<Expr, ParseError> {
+        let expr = self.expr()?;
+        if let Some(tok) = self.peek() {
+            return Err(ParseError::UnexpectedToken(tok.to_string(), self.pos));
+        }
+        Ok(expr)
+    }
+
+    /// expr := term (('+' | '-') term)*
+    /// 1+ `terms`, joined by +|-
+    /// example: $ a + b $
+    fn expr(&mut self) -> Result<Expr, ParseError> {
+        let mut lhs = self.term()?;
+        loop {
+            let op = match self.peek() {
+                Some(Token::Plus) => Op::Add,
+                Some(Token::Minus) => Op::Sub,
+                _ => break,
+            };
+            // Grammar:
+            //   expr    := term (('+' | '-') term)*
+            //   term    := unary (('*' | '/') unary)*
+            //   unary   := '-' unary | power
+            //   power   := primary ('^' unary)?
+            //   primary := NUMBER | '(' expr ')'
+            self.advance();
+            let rhs = self.term()?;
+            lhs = Expr::Binary(Box::new(lhs), op, Box::new(rhs));
+        }
+        Ok(lhs)
+    }
+
+    /// term := unary (('*' | '/') unary)*
+    /// 1+ `unary`, joined by *|/
+    /// example: $ a * b $
+    fn term(&mut self) -> Result<Expr, ParseError> {
+        let mut lhs = self.unary()?;
+        loop {
+            let tok = self.peek();
+            let op = match tok {
+                Some(Token::Star | Token::LParen) => Op::Mul,
+                Some(Token::Slash) => Op::Div,
+                _ => break,
+            };
+            // treat $ (a)(b) $ as $ (a)*(b) $
+            if tok.ne(&Some(&Token::LParen)) {
+                self.advance();
+            }
+            let rhs = self.unary()?;
+            lhs = Expr::Binary(Box::new(lhs), op, Box::new(rhs));
+        }
+        Ok(lhs)
+    }
+
+    /// unary := '-' unary | power
+    /// (-)? `power`
+    /// example: $ a $ | $ -a $ | $ -a^b $ | $ (a-b)^c $
+    fn unary(&mut self) -> Result<Expr, ParseError> {
+        // if current position is minus, re-run this function and make negative.
+        if matches!(self.peek(), Some(Token::Minus)) {
+            self.advance();
+            let inner = self.unary()?;
+            return Ok(Expr::Neg(Box::new(inner)));
+        }
+        self.power()
+    }
+
+    /// power := primary ('^' unary)?
+    /// `primary`, followed by (^`unary`)?
+    /// example: $ a $  | $ a^b $ | $ (a-b)^c $ | $ -(a+b) $
+    fn power(&mut self) -> Result<Expr, ParseError> {
+        let base = self.primary()?;
+        // if current is a bracket, run `unary()` on the bracket's first item.
+        if matches!(self.peek(), Some(Token::Caret)) {
+            self.advance();
+            let exp = self.unary()?;
+            return Ok(Expr::Binary(Box::new(base), Op::Pow, Box::new(exp)));
+        }
+        Ok(base)
+    }
+
+    /// primary := NUMBER | '(' expr ')'
+    /// number|parenthesized expression
+    fn primary(&mut self) -> Result<Expr, ParseError> {
+        match self.advance() {
+            Some(Token::Num(n)) => Ok(Expr::Num(n)),
+            // if token is a '(', run `expr()` on the next tokens until finding matching ')'.
+            Some(Token::LParen) => {
+                let inner = self.expr()?;
+                match self.advance() {
+                    Some(Token::RParen) => Ok(inner),
+                    Some(t) => Err(ParseError::UnexpectedToken(t.to_string(), self.pos - 1)),
+                    None => Err(ParseError::UnexpectedEnd),
+                }
+            }
+            Some(t) => Err(ParseError::UnexpectedToken(t.to_string(), self.pos - 1)),
+            None => Err(ParseError::UnexpectedEnd),
         }
     }
-}
-
-/// # TODO:
-/// - [ ] [?] Prehaps Also create another `parse_calc_kinds()`,
-///   and have this return a set of `CalcKind`s
-/// - [x] Special case for exponents (_if-statement_ for `Digit` and `Operator`)
-pub fn parse_raw_kinds(kinds: &[RawKind]) -> String {
-    let mut buf = String::new();
-    let mut is_exponent = false;
-    let mut number_after_exponent = true;
-    for k in kinds {
-        match k {
-            RawKind::Bracket(b) => buf.push_str(&b.to_string()),
-            RawKind::Digit(u) => {
-                if is_exponent {
-                    buf.push_str(&u.to_superscript());
-                } else {
-                    buf.push_str(&u.to_string());
-                }
-                number_after_exponent = true;
-            }
-            RawKind::Dot => {
-                if is_exponent {
-                    buf.push_str(&'.'.to_superscript());
-                } else {
-                    buf.push('.');
-                }
-            }
-            RawKind::Operator(o) => {
-                if let Operator::Exp = o {
-                    is_exponent = true;
-                    number_after_exponent = false;
-                } else {
-                    // NOTE: TEMPORARY
-                    if !number_after_exponent {
-                        buf.push('^');
-                    }
-                    buf.push(' ');
-                    buf.push(o.get_sign());
-                    buf.push(' ');
-                    is_exponent = false;
-                }
-            }
-            RawKind::Other => {}
-        }
-    }
-    buf
 }

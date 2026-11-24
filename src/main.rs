@@ -1,12 +1,10 @@
 use std::{env, io};
 
 mod app;
-mod calc;
 mod custom_live;
-mod new_eval;
-mod new_parse;
-mod new_tokenize;
+mod eval;
 mod parse;
+mod tokenize;
 
 fn main() -> io::Result<()> {
     // TODO: make this a flag (--verbose|-v)
