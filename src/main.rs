@@ -3,6 +3,9 @@ use std::{env, io};
 mod app;
 mod calc;
 mod custom_live;
+mod new_eval;
+mod new_parse;
+mod new_tokenize;
 mod parse;
 
 fn main() -> io::Result<()> {
@@ -19,8 +22,10 @@ fn main() -> io::Result<()> {
         }
     } else {
         let rat = ratatui::run(|terminal| app::App::new().run(terminal))?;
+        // TODO:
+        // - [ ] Should be able to print `Vec<math_new::Token>` (perhaps from `rat.tokens` ?)
         if debug {
-            println!("{:?}\n{:?}", rat.raw, rat.kinds); // NOTE DEBUG
+            // println!("{:?}\n{:?}", rat.raw);
         }
     }
 

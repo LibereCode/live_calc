@@ -1,6 +1,6 @@
-use std::io;
+use std::{io, mem};
 
-use crossterm::event::{self, KeyCode, KeyEventKind, KeyEventState, KeyModifiers};
+use crossterm::event::{self, KeyCode, KeyEventKind, KeyModifiers};
 use ratatui::{
     DefaultTerminal, Frame,
     layout::{Constraint, Layout, Position},
@@ -9,10 +9,7 @@ use ratatui::{
     widgets::{Block, List, ListItem, Paragraph},
 };
 
-use crate::{
-    calc,
-    parse::{self, RawKind},
-};
+use crate::new_eval::evaluate;
 
 pub enum InputMode {
     Normal,
@@ -30,14 +27,18 @@ pub struct App {
     /// History of recorded messages
     messages: Vec<String>,
 
-    /// NOTE: new
-    ///
-    /// `raw` as a parsed `String`
-    parsed: String,
-    /// Each `char` as a `RawKind`
-    pub kinds: Vec<RawKind>,
-    /// The sum of equation as a `kStringk`
-    sum: String,
+    // /// `raw` as a parsed `String`
+    // parsed: String,
+    // /// Each `char` as a `RawKind`
+    // pub kinds: Vec<RawKind>,
+    // /// The sum of equation as a `kStringk`
+    // sum: String,
+    //
+    /// NOTE: `math_new.rs`
+    /// From `math_new::evaluate()`
+    /// The result of the equation
+    eval: f64,
+    current_message: String,
 }
 
 impl App {
@@ -48,9 +49,12 @@ impl App {
             messages: Vec::new(),
             character_index: 0,
 
-            parsed: String::new(),
-            kinds: Vec::new(),
-            sum: 0f64.to_string(),
+            // parsed: String::new(),
+            // kinds: Vec::new(),
+            // sum: 0f64.to_string(),
+            //
+            eval: 0f64,
+            current_message: String::new(),
         }
     }
 
@@ -71,9 +75,13 @@ impl App {
         self.raw.insert(index, c);
         self.move_cursor_right();
 
-        parse::char_to_rawkind(c, &mut self.kinds);
-        self.sum = calc::calculate(&self.kinds);
-        self.parsed = parse::parse_raw_kinds(&self.kinds) + " = " + &self.sum;
+        // parse::char_to_rawkind(c, &mut self.kinds);
+        // self.sum = calc::calculate(&self.kinds);
+        // self.parsed = parse::parse_raw_kinds(&self.kinds) + " = " + &self.sum;
+
+        self.eval = evaluate(&self.raw).unwrap_or_default();
+        // TODO: Instead of using `self.raw`, convert `Vec<Token>` to `String`
+        self.current_message = self.raw.clone() + " = " + &self.eval.to_string();
     }
 
     /// Returns the byte index based on the character position.
@@ -108,15 +116,18 @@ impl App {
             self.raw = before_char_to_delete.chain(after_char_to_delete).collect();
             self.move_cursor_left();
 
-            let kinds_before = self.kinds.iter().take(from_left_to_current_index);
-            let kinds_after = self.kinds.iter().skip(current_index);
-            self.kinds = kinds_before
-                .chain(kinds_after)
-                .cloned()
-                .collect::<Vec<RawKind>>();
+            // let kinds_before = self.kinds.iter().take(from_left_to_current_index);
+            // let kinds_after = self.kinds.iter().skip(current_index);
+            // self.kinds = kinds_before
+            //     .chain(kinds_after)
+            //     .cloned()
+            //     .collect::<Vec<RawKind>>();
+            //
+            // self.sum = calc::calculate(&self.kinds);
+            // self.parsed = parse::parse_raw_kinds(&self.kinds) + " = " + &self.sum;
 
-            self.sum = calc::calculate(&self.kinds);
-            self.parsed = parse::parse_raw_kinds(&self.kinds) + " = " + &self.sum;
+            self.eval = evaluate(&self.raw).unwrap_or_default();
+            self.current_message = self.raw.clone() + " = " + &self.eval.to_string();
         }
     }
 
@@ -129,10 +140,13 @@ impl App {
     }
 
     pub fn submit_message(&mut self) {
-        self.messages.push(self.parsed.clone());
+        // self.messages.push(self.parsed.clone());
         self.raw.clear();
-        self.kinds.clear();
+        // self.kinds.clear();
         self.reset_cursor();
+
+        self.messages.push(mem::take(&mut self.current_message));
+        self.eval = 0f64;
     }
 
     /// # TODO:
@@ -223,7 +237,7 @@ impl App {
             .block(Block::bordered().title("Input"));
         frame.render_widget(input, input_area);
 
-        let equation = Paragraph::new(self.parsed.as_str())
+        let equation = Paragraph::new(self.current_message.as_str())
             .style(match self.mode {
                 InputMode::Normal => Style::default(),
                 InputMode::Insert => Style::default().fg(Color::Yellow),
