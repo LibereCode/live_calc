@@ -12,7 +12,7 @@ use ratatui::{
 };
 
 use crate::{
-    eval::{EvalParse, evaluate},
+    eval::EvalParse,
     parse::{ParseTokens, Parser},
     tokenize::tokenize,
 };
@@ -45,7 +45,7 @@ pub struct App {
     /// The result of the equation
     current_message: String,
     parse: Parser,
-    eval: f64,
+    eval: String,
 }
 
 impl App {
@@ -62,7 +62,7 @@ impl App {
             //
             current_message: String::new(),
             parse: Parser::new(Vec::new()),
-            eval: 0f64,
+            eval: String::new(),
         }
     }
 
@@ -156,7 +156,7 @@ impl App {
         self.reset_cursor();
 
         self.messages.push(mem::take(&mut self.current_message));
-        self.eval = 0f64;
+        self.eval = String::new();
         self.parse = Parser::new(Vec::new());
     }
 
@@ -288,16 +288,25 @@ impl App {
         frame.render_widget(messages, messages_area);
     }
 
+    /// # TODO:
+    /// - (Idea)
+    ///   Would be better to replace `self.parse` and `self.eval` with
+    ///   `self.tokens: Result<Vec<Token>, ParseError>`
+    ///   - That way, can pass through `ParseError` to final $Rhs$
+    ///     instead of swallowing it in `unwrap_or_default()`
     fn parse_eval(&mut self) {
         // self.eval = evaluate(&self.raw).unwrap_or_default();
         self.parse = tokenize(&self.raw).unwrap_or_default().parse();
-        self.eval = self.parse.eval().unwrap_or_default();
+        self.eval = match self.parse.eval() {
+            Ok(n) => n.to_string(),
+            Err(e) => e.to_string(),
+        };
         // TODO: Instead of using `self.raw`, convert `Vec<Token>` to `String`
         // self.current_message = self.raw.clone() + " = " + &self.eval.to_string();
         let mut msg = String::new();
         for tok in &self.parse.tokens {
             msg.push_str(&tok.to_string());
         }
-        self.current_message = msg + " = " + &self.eval.to_string();
+        self.current_message = msg + " = " + &self.eval;
     }
 }
