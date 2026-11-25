@@ -1,3 +1,5 @@
+//! `ratatui` stuff, implementing the (T)UI
+
 use std::{io, mem};
 
 use crossterm::event::{self, KeyCode, KeyEventKind, KeyModifiers};
@@ -9,7 +11,11 @@ use ratatui::{
     widgets::{Block, List, ListItem, Paragraph},
 };
 
-use crate::eval::evaluate;
+use crate::{
+    eval::{EvalParse, evaluate},
+    parse::{ParseTokens, Parser},
+    tokenize::tokenize,
+};
 
 pub enum InputMode {
     Normal,
@@ -37,8 +43,9 @@ pub struct App {
     /// NOTE: `math_new.rs`
     /// From `math_new::evaluate()`
     /// The result of the equation
-    eval: f64,
     current_message: String,
+    parse: Parser,
+    eval: f64,
 }
 
 impl App {
@@ -53,8 +60,9 @@ impl App {
             // kinds: Vec::new(),
             // sum: 0f64.to_string(),
             //
-            eval: 0f64,
             current_message: String::new(),
+            parse: Parser::new(Vec::new()),
+            eval: 0f64,
         }
     }
 
@@ -79,9 +87,10 @@ impl App {
         // self.sum = calc::calculate(&self.kinds);
         // self.parsed = parse::parse_raw_kinds(&self.kinds) + " = " + &self.sum;
 
-        self.eval = evaluate(&self.raw).unwrap_or_default();
+        // self.eval = evaluate(&self.raw).unwrap_or_default();
         // TODO: Instead of using `self.raw`, convert `Vec<Token>` to `String`
-        self.current_message = self.raw.clone() + " = " + &self.eval.to_string();
+        // self.current_message = self.raw.clone() + " = " + &self.eval.to_string();
+        self.parse_eval();
     }
 
     /// Returns the byte index based on the character position.
@@ -126,8 +135,9 @@ impl App {
             // self.sum = calc::calculate(&self.kinds);
             // self.parsed = parse::parse_raw_kinds(&self.kinds) + " = " + &self.sum;
 
-            self.eval = evaluate(&self.raw).unwrap_or_default();
-            self.current_message = self.raw.clone() + " = " + &self.eval.to_string();
+            // self.eval = evaluate(&self.raw).unwrap_or_default();
+            // self.current_message = self.raw.clone() + " = " + &self.eval.to_string();
+            self.parse_eval();
         }
     }
 
@@ -147,6 +157,7 @@ impl App {
 
         self.messages.push(mem::take(&mut self.current_message));
         self.eval = 0f64;
+        self.parse = Parser::new(Vec::new());
     }
 
     /// # TODO:
@@ -275,5 +286,18 @@ impl App {
             .collect();
         let messages = List::new(messages).block(Block::bordered().title("Messages"));
         frame.render_widget(messages, messages_area);
+    }
+
+    fn parse_eval(&mut self) {
+        // self.eval = evaluate(&self.raw).unwrap_or_default();
+        self.parse = tokenize(&self.raw).unwrap_or_default().parse();
+        self.eval = self.parse.eval().unwrap_or_default();
+        // TODO: Instead of using `self.raw`, convert `Vec<Token>` to `String`
+        // self.current_message = self.raw.clone() + " = " + &self.eval.to_string();
+        let mut msg = String::new();
+        for tok in &self.parse.tokens {
+            msg.push_str(&tok.to_string());
+        }
+        self.current_message = msg + " = " + &self.eval.to_string();
     }
 }

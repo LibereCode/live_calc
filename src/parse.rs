@@ -1,4 +1,9 @@
-use crate::tokenize::{ParseError, Token};
+//! Replaces old `calc.rs` (together with `./eval.rs`)
+//!
+//! This module turns `Token`(s) into `Expr`
+//! `Expr` is basically the whole $ equation $, or it's parts.
+
+use crate::tokenize::{ParseError, Token, tokenize};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Op {
@@ -23,7 +28,7 @@ pub enum Expr {
 ///   power   := primary ('^' unary)?
 ///   primary := NUMBER | '(' expr ')'
 pub struct Parser {
-    tokens: Vec<Token>,
+    pub tokens: Vec<Token>,
     pos: usize,
 }
 
@@ -45,7 +50,7 @@ impl Parser {
         tok
     }
 
-    pub fn parse(mut self) -> Result<Expr, ParseError> {
+    pub fn parse(&mut self) -> Result<Expr, ParseError> {
         let expr = self.expr()?;
         if let Some(tok) = self.peek() {
             return Err(ParseError::UnexpectedToken(tok.to_string(), self.pos));
@@ -143,5 +148,22 @@ impl Parser {
             Some(t) => Err(ParseError::UnexpectedToken(t.to_string(), self.pos - 1)),
             None => Err(ParseError::UnexpectedEnd),
         }
+    }
+}
+
+pub trait ParseTokens {
+    /// # Usage
+    /// ```rust
+    /// // Please avoid using `unwrap()`, do a better error-handling instead
+    /// let math_str: &str = "1+1";
+    /// let tokens: Vec<Token> = tokenize(math_str).unwrap_or_default();
+    /// let parser: Parser = tokens.parse();
+    /// ```
+    fn parse(self) -> Parser;
+}
+
+impl ParseTokens for Vec<Token> {
+    fn parse(self) -> Parser {
+        Parser::new(self)
     }
 }

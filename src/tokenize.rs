@@ -1,3 +1,8 @@
+//! Replaces old `parse.rs`
+//!
+//! This module turns `&str` into `Token`(s)
+//! `Token` is a parsed, math-related part of an equation.
+
 use std::fmt;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -16,13 +21,13 @@ impl fmt::Display for Token {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Token::Num(n) => write!(f, "{n}"),
-            Token::Plus => write!(f, "'+'"),
-            Token::Minus => write!(f, "'-'"),
-            Token::Star => write!(f, "'*'"),
-            Token::Slash => write!(f, "'/'"),
-            Token::Caret => write!(f, "'^'"),
-            Token::LParen => write!(f, "'('"),
-            Token::RParen => write!(f, "')'"),
+            Token::Plus => write!(f, " + "),
+            Token::Minus => write!(f, " - "),
+            Token::Star => write!(f, " * "),
+            Token::Slash => write!(f, " / "),
+            Token::Caret => write!(f, "^"),
+            Token::LParen => write!(f, " ("),
+            Token::RParen => write!(f, ") "),
         }
     }
 }

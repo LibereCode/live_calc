@@ -1,31 +1,25 @@
-use std::{env, io};
+//! **Calc** is slang for "calculator", btw.
+
+use std::io;
+
+use crate::cli::Config;
 
 mod app;
+mod cli;
 mod custom_live;
 mod eval;
 mod parse;
 mod tokenize;
 
+/// I like keeping `main()` minimal.
+///
+/// ## overview
+/// For the `ratatui` route:
+/// `./cli.rs` -> `./app.rs` -> `./tokenize.rs` -> `./parse.rs` -> `./eval.rs` (-> `./app.rs`)
 fn main() -> io::Result<()> {
-    // TODO: make this a flag (--verbose|-v)
-    let debug = true;
+    let cfg = Config { debug: true };
 
-    let args: Vec<String> = env::args().collect();
-    if let Some(a) = args.get(1) {
-        if a == "-c" || a == "--custom" {
-            custom_live::live_calc()?;
-        } else {
-            eprintln!("Unknown argument: {a}");
-            std::process::exit(101);
-        }
-    } else {
-        let rat = ratatui::run(|terminal| app::App::new().run(terminal))?;
-        // TODO:
-        // - [ ] Should be able to print `Vec<math_new::Token>` (perhaps from `rat.tokens` ?)
-        if debug {
-            // println!("{:?}\n{:?}", rat.raw);
-        }
-    }
+    cli::run(&cfg)?;
 
     Ok(())
 }

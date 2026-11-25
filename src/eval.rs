@@ -1,3 +1,8 @@
+//! Replaces old `calc.rs` (together with `./parse.rs`)
+//!
+//! This module turns `Expr` into `f64`
+//! This `f64` is basically the result of the `Expr` $ equation $.
+
 use crate::{
     parse::{Expr, Op, Parser},
     tokenize::{ParseError, tokenize},
@@ -40,6 +45,28 @@ pub fn eval(expr: &Expr) -> Result<f64, ParseError> {
         Ok(value)
     } else {
         Err(ParseError::NonFinite)
+    }
+}
+
+pub trait EvalParse {
+    /// # Usage
+    /// ```rust
+    /// // Please avoid using `unwrap()`, do a better error-handling instead
+    /// let math_str: &str = "1+1";
+    /// let tokens: Vec<Token> = tokenize(math_str).unwrap_or_default();
+    /// let parser: Parser = tokens.parse();
+    /// let eval: f64 = parser.eval().unwrap();
+    /// ```
+    /// ---
+    ///
+    /// This is an alternative to `evaluate(input: &str)`
+    fn eval(&mut self) -> Result<f64, ParseError>;
+}
+
+impl EvalParse for Parser {
+    fn eval(&mut self) -> Result<f64, ParseError> {
+        let expr = self.parse()?;
+        eval(&expr)
     }
 }
 
