@@ -22,11 +22,9 @@ pub fn run(cfg: &Config) -> io::Result<()> {
             std::process::exit(101);
         }
     } else {
-        let _rat = ratatui::run(|terminal| app::App::new().run(terminal))?;
-        // TODO:
-        // - [ ] Should be able to print `Vec<tokenize::Token>` (perhaps from `rat.tokens` ?)
+        let rat = ratatui::run(|terminal| app::App::new().run(terminal))?;
         if cfg.debug {
-            // println!("{:?}\n{:?}", rat.raw);
+            println!("{:?}", rat.tokens);
         }
     }
 

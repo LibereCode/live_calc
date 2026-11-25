@@ -3,7 +3,7 @@
 //! This module turns `Token`(s) into `Expr`
 //! `Expr` is basically the whole $ equation $, or it's parts.
 
-use crate::tokenize::{ParseError, Token, tokenize};
+use crate::tokenize::{ParseError, Token};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Op {

@@ -13,10 +13,11 @@ use ratatui::{
 
 use crate::{
     eval::EvalParse,
-    parse::{ParseTokens, Parser},
+    parse::ParseTokens,
     tokenize::{ParseError, Token, TokensToString, tokenize},
 };
 
+#[derive(PartialEq)]
 pub enum InputMode {
     Normal,
     Insert,
@@ -33,21 +34,13 @@ pub struct App {
     /// History of recorded messages
     messages: Vec<String>,
 
-    // /// `raw` as a parsed `String`
-    // parsed: String,
-    // /// Each `char` as a `RawKind`
-    // pub kinds: Vec<RawKind>,
-    // /// The sum of equation as a `kStringk`
-    // sum: String,
-    //
-    parse: Parser,
+    /// From `tokenize::tokenize()`
+    /// The `Result<_,_>` from trying to _tokenize_ input-string.
+    pub tokens: Result<Vec<Token>, ParseError>,
     /// From `eval::evaluate()`
     /// The result of the equation (from `f64` to `String`)
     eval: Result<String, String>,
     current_message: String,
-    /// # TEST:
-    /// - Replace `App.eval` and `App.parse` with `App.tokens`.
-    tokens: Result<Vec<Token>, ParseError>,
 }
 
 impl App {
@@ -58,17 +51,13 @@ impl App {
             messages: Vec::new(),
             character_index: 0,
 
-            // parsed: String::new(),
-            // kinds: Vec::new(),
-            // sum: 0f64.to_string(),
-            //
-            parse: Parser::new(Vec::new()),
-            eval: Ok(String::new()),
             tokens: Ok(Vec::new()),
+            eval: Ok(String::new()),
             current_message: String::new(),
         }
     }
 
+    /// If in `InputMode::Normal` and `character_index` > 0, then move left.
     pub fn move_cursor_left(&mut self) {
         let cursor_moved_left = self.character_index.saturating_sub(1);
         self.character_index = self.clamp_cursor(cursor_moved_left);
@@ -79,20 +68,11 @@ impl App {
         self.character_index = self.clamp_cursor(cursor_moved_right);
     }
 
-    /// # FIXME:
-    /// - [ ] Insert `RawKind` at correct index in `self.kinds` (currently just appends)
     pub fn enter_char(&mut self, c: char) {
         let index = self.byte_index();
         self.raw.insert(index, c);
         self.move_cursor_right();
 
-        // parse::char_to_rawkind(c, &mut self.kinds);
-        // self.sum = calc::calculate(&self.kinds);
-        // self.parsed = parse::parse_raw_kinds(&self.kinds) + " = " + &self.sum;
-
-        // self.eval = evaluate(&self.raw).unwrap_or_default();
-        // TODO: Instead of using `self.raw`, convert `Vec<Token>` to `String`
-        // self.current_message = self.raw.clone() + " = " + &self.eval.to_string();
         self.update_message();
     }
 
@@ -108,6 +88,13 @@ impl App {
             .unwrap_or(self.raw.len())
     }
 
+    /// match `InputMode`
+    /// - `InputMode::Insert` =>
+    ///   - Behave like regular backspace.
+    /// - `InputMode::Normal` =>
+    ///   - Behave like (n)vim 'x' key.
+    ///     ie: Delete character at cursor and keep position
+    ///     (unless you deleted right-most character, where you would move left)
     pub fn delete_char(&mut self) {
         let is_not_cursor_leftmost = self.character_index != 0;
         if is_not_cursor_leftmost {
@@ -126,20 +113,12 @@ impl App {
             // Put all characters together except the selected one.
             // By leaving the selected one out, it is forgotten and therefore deleted.
             self.raw = before_char_to_delete.chain(after_char_to_delete).collect();
-            self.move_cursor_left();
 
-            // let kinds_before = self.kinds.iter().take(from_left_to_current_index);
-            // let kinds_after = self.kinds.iter().skip(current_index);
-            // self.kinds = kinds_before
-            //     .chain(kinds_after)
-            //     .cloned()
-            //     .collect::<Vec<RawKind>>();
-            //
-            // self.sum = calc::calculate(&self.kinds);
-            // self.parsed = parse::parse_raw_kinds(&self.kinds) + " = " + &self.sum;
+            // Behave like (n)vim when deleting characters
+            if self.mode == InputMode::Insert || self.character_index > self.raw.len() {
+                self.move_cursor_left();
+            }
 
-            // self.eval = evaluate(&self.raw).unwrap_or_default();
-            // self.current_message = self.raw.clone() + " = " + &self.eval.to_string();
             self.update_message();
         }
     }
@@ -148,28 +127,18 @@ impl App {
         new_cursor_pos.clamp(0, self.raw.chars().count())
     }
 
-    pub const fn reset_cursor(&mut self) {
-        self.character_index = 0;
-    }
-
+    /// Push a message to `self.messages` and clear the 2 other text-boxes (Input & Equation).
     pub fn submit_message(&mut self) {
-        // self.messages.push(self.parsed.clone());
         self.raw.clear();
-        // self.kinds.clear();
-        self.reset_cursor();
+        self.character_index = 0;
 
         self.messages.push(mem::take(&mut self.current_message));
         self.eval = Ok(String::new());
         self.tokens = Ok(Vec::new());
-        self.parse = Parser::new(Vec::new());
     }
 
     /// # TODO:
     /// - [ ] Scroll _history_ in _normal_ mode with _j|k_ keys
-    ///
-    /// # FIXME:
-    /// - [ ] Show **cursor-position** in _normal_ mode
-    /// - [ ] Delete char on cursor in _normal_ mode (instead of the one before)
     pub fn run(mut self, terminal: &mut DefaultTerminal) -> io::Result<Self> {
         loop {
             terminal.draw(|frame| self.render(frame))?;
@@ -184,6 +153,11 @@ impl App {
                     InputMode::Normal => match key.code {
                         KeyCode::Char('i' | 'a') => {
                             self.mode = InputMode::Insert;
+                            // NOTE Fixes bug where cursor would leave an empty space if you
+                            //   enter Insert-mode with an empty input.
+                            if self.character_index == 1 {
+                                self.move_cursor_left();
+                            }
                         }
                         KeyCode::Enter | KeyCode::Char('o') => self.submit_message(),
                         KeyCode::Char('x') => self.delete_char(),
@@ -263,31 +237,31 @@ impl App {
             .block(Block::bordered().title("Equation"));
         frame.render_widget(equation, equation_area);
 
-        // match self.mode {
-        //     // Hide the cursor. `Frame` does this by default, so we don't need to do anything here
-        //     InputMode::Normal => {}
-        //
-        //     // Make the cursor visible and ask ratatui to put it at the specified coordinates after
-        //     // rendering
-        //     InputMode::Insert =>
-        // __________________________
-        // Always show cursor instead
+        // Cursor shenanigans
         #[expect(clippy::cast_possible_truncation)]
         frame.set_cursor_position(Position::new(
             // Draw the cursor at the current position in the input field.
             // This position can be controlled via the left and right arrow key
-            input_area.x + self.character_index as u16 + 1,
+            input_area.x
+                + self.character_index as u16
+                + if self.character_index.gt(&0)
+                    && let InputMode::Normal = self.mode
+                {
+                    0
+                } else {
+                    1
+                },
             // Move one line down, from the border to the input line
+            // self.messages.push(self.parsed.clone());
             input_area.y + 1,
         ));
-        // , }
 
         let messages: Vec<ListItem> = self
             .messages
             .iter()
             .enumerate()
             .map(|(i, m)| {
-                let content = Line::from(Span::raw(format!("{i}: {m}")));
+                let content = Line::from(Span::raw(format!("{}: {m}", i + 1)));
                 ListItem::new(content)
             })
             .collect();
@@ -305,32 +279,11 @@ impl App {
         };
     }
 
-    /// # TODO:
-    /// - (Idea)
-    ///   Would be better to replace `self.parse` and `self.eval` with
-    ///   `self.tokens: Result<Vec<Token>, ParseError>`
-    ///   - That way, can pass through `ParseError` to final $Rhs$
-    ///     instead of swallowing it in `unwrap_or_default()`
     fn update_message(&mut self) {
-        // self.eval = evaluate(&self.raw).unwrap_or_default();
-        // ---
-        // self.parse = tokenize(&self.raw).unwrap_or_default().parse();
-        // self.eval = match self.parse.eval() {
-        //     Ok(n) => n.to_string(),
-        //     Err(e) => e.to_string(),
-        // };
-        // ---
         self.tokens = tokenize(&self.raw);
         self.parse_eval();
         let message = match &self.tokens {
-            Ok(t) => {
-                // let mut msg = String::new();
-                // for tok in t {
-                //     msg.push_str(&tok.to_string());
-                // }
-                // msg
-                t.to_string()
-            }
+            Ok(t) => t.to_string(),
             Err(_) => self.raw.clone(),
         };
         self.current_message = message
