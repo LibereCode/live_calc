@@ -24,6 +24,7 @@ devenv allow
 
 1. Base operators (+, -, \*, /)
 1. Exponent (^)
+1. Brackets ( '(', ')' )
 1. Respect [PEDMAS](https://en.wikipedia.org/wiki/Order_of_operations)
    - For implemented features, have yet to implement other PEDMAS related features.
      See below.
@@ -34,17 +35,17 @@ devenv allow
 ### Implement
 
 - [x] _decimals_ (dots)
-  - [ ] Better _floating numbers_ (rounding? More precise?)
+  - [ ] [?] Better _floating numbers_ (rounding? More precise?)
 - [x] _exponents_
-- [ ] _brackets_
+- [x] _brackets_
 - [ ] _variables_
 - [ ] Scroll _history_
 
 ### FIXME
 
-- [ ] The _better-normal-mode-delete-char_ I did and have saved somewhere...
-- [ ] Better _UI-layout_
-- [ ] Bug where \*|/|^ with negative numbers doesn't work.
+- [x] The _better-normal-mode-delete-char_ I did and have saved somewhere...
+- [x] Better _UI-layout_
+- [x] Bug where \*|/|^ with negative numbers doesn't work.
 
 ## LICENSE
 
