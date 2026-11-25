@@ -32,6 +32,20 @@ impl fmt::Display for Token {
     }
 }
 
+pub trait TokensToString {
+    fn to_string(&self) -> String;
+}
+
+impl TokensToString for Vec<Token> {
+    fn to_string(&self) -> String {
+        let mut msg = String::new();
+        for tok in self {
+            msg.push_str(&tok.to_string());
+        }
+        msg
+    }
+}
+
 #[derive(Debug)]
 pub enum ParseError {
     UnexpectedChar(char, usize),

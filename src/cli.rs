@@ -24,7 +24,7 @@ pub fn run(cfg: &Config) -> io::Result<()> {
     } else {
         let _rat = ratatui::run(|terminal| app::App::new().run(terminal))?;
         // TODO:
-        // - [ ] Should be able to print `Vec<math_new::Token>` (perhaps from `rat.tokens` ?)
+        // - [ ] Should be able to print `Vec<tokenize::Token>` (perhaps from `rat.tokens` ?)
         if cfg.debug {
             // println!("{:?}\n{:?}", rat.raw);
         }

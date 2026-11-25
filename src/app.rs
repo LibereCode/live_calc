@@ -14,7 +14,7 @@ use ratatui::{
 use crate::{
     eval::EvalParse,
     parse::{ParseTokens, Parser},
-    tokenize::tokenize,
+    tokenize::{ParseError, Token, TokensToString, tokenize},
 };
 
 pub enum InputMode {
@@ -40,12 +40,14 @@ pub struct App {
     // /// The sum of equation as a `kStringk`
     // sum: String,
     //
-    /// NOTE: `math_new.rs`
-    /// From `math_new::evaluate()`
-    /// The result of the equation
-    current_message: String,
     parse: Parser,
-    eval: String,
+    /// From `eval::evaluate()`
+    /// The result of the equation (from `f64` to `String`)
+    eval: Result<String, String>,
+    current_message: String,
+    /// # TEST:
+    /// - Replace `App.eval` and `App.parse` with `App.tokens`.
+    tokens: Result<Vec<Token>, ParseError>,
 }
 
 impl App {
@@ -60,9 +62,10 @@ impl App {
             // kinds: Vec::new(),
             // sum: 0f64.to_string(),
             //
-            current_message: String::new(),
             parse: Parser::new(Vec::new()),
-            eval: String::new(),
+            eval: Ok(String::new()),
+            tokens: Ok(Vec::new()),
+            current_message: String::new(),
         }
     }
 
@@ -90,7 +93,7 @@ impl App {
         // self.eval = evaluate(&self.raw).unwrap_or_default();
         // TODO: Instead of using `self.raw`, convert `Vec<Token>` to `String`
         // self.current_message = self.raw.clone() + " = " + &self.eval.to_string();
-        self.parse_eval();
+        self.update_message();
     }
 
     /// Returns the byte index based on the character position.
@@ -137,7 +140,7 @@ impl App {
 
             // self.eval = evaluate(&self.raw).unwrap_or_default();
             // self.current_message = self.raw.clone() + " = " + &self.eval.to_string();
-            self.parse_eval();
+            self.update_message();
         }
     }
 
@@ -156,7 +159,8 @@ impl App {
         self.reset_cursor();
 
         self.messages.push(mem::take(&mut self.current_message));
-        self.eval = String::new();
+        self.eval = Ok(String::new());
+        self.tokens = Ok(Vec::new());
         self.parse = Parser::new(Vec::new());
     }
 
@@ -243,15 +247,18 @@ impl App {
         let input = Paragraph::new(self.raw.as_str())
             .style(match self.mode {
                 InputMode::Normal => Style::default(),
-                InputMode::Insert => Style::default().fg(Color::Yellow),
+                InputMode::Insert => match self.tokens {
+                    Ok(_) => Style::default().fg(Color::Green),
+                    Err(_) => Style::default().fg(Color::Red),
+                },
             })
             .block(Block::bordered().title("Input"));
         frame.render_widget(input, input_area);
 
         let equation = Paragraph::new(self.current_message.as_str())
-            .style(match self.mode {
-                InputMode::Normal => Style::default(),
-                InputMode::Insert => Style::default().fg(Color::Yellow),
+            .style(match self.eval {
+                Ok(_) => Style::default().fg(Color::Green),
+                Err(_) => Style::default().fg(Color::Red),
             })
             .block(Block::bordered().title("Equation"));
         frame.render_widget(equation, equation_area);
@@ -288,25 +295,48 @@ impl App {
         frame.render_widget(messages, messages_area);
     }
 
+    fn parse_eval(&mut self) {
+        self.eval = match &self.tokens {
+            Ok(v) => match v.clone().parse().eval() {
+                Ok(n) => Ok(n.to_string()),
+                Err(e) => Err(e.to_string()),
+            },
+            Err(e) => Err(e.to_string()),
+        };
+    }
+
     /// # TODO:
     /// - (Idea)
     ///   Would be better to replace `self.parse` and `self.eval` with
     ///   `self.tokens: Result<Vec<Token>, ParseError>`
     ///   - That way, can pass through `ParseError` to final $Rhs$
     ///     instead of swallowing it in `unwrap_or_default()`
-    fn parse_eval(&mut self) {
+    fn update_message(&mut self) {
         // self.eval = evaluate(&self.raw).unwrap_or_default();
-        self.parse = tokenize(&self.raw).unwrap_or_default().parse();
-        self.eval = match self.parse.eval() {
-            Ok(n) => n.to_string(),
-            Err(e) => e.to_string(),
+        // ---
+        // self.parse = tokenize(&self.raw).unwrap_or_default().parse();
+        // self.eval = match self.parse.eval() {
+        //     Ok(n) => n.to_string(),
+        //     Err(e) => e.to_string(),
+        // };
+        // ---
+        self.tokens = tokenize(&self.raw);
+        self.parse_eval();
+        let message = match &self.tokens {
+            Ok(t) => {
+                // let mut msg = String::new();
+                // for tok in t {
+                //     msg.push_str(&tok.to_string());
+                // }
+                // msg
+                t.to_string()
+            }
+            Err(_) => self.raw.clone(),
         };
-        // TODO: Instead of using `self.raw`, convert `Vec<Token>` to `String`
-        // self.current_message = self.raw.clone() + " = " + &self.eval.to_string();
-        let mut msg = String::new();
-        for tok in &self.parse.tokens {
-            msg.push_str(&tok.to_string());
-        }
-        self.current_message = msg + " = " + &self.eval;
+        self.current_message = message
+            + " = "
+            + match &self.eval {
+                Ok(s) | Err(s) => s,
+            };
     }
 }
