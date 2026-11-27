@@ -17,8 +17,22 @@ pub enum Op {
 #[derive(Debug)]
 pub enum Expr {
     Num(f64),
-    Neg(Box<Expr>),
+    // Neg(Box<Expr>),
+    /// `Box` corresponding to $ a `Op` b $,
+    /// example: $ 3 * 4 $
     Binary(Box<Expr>, Op, Box<Expr>),
+
+    // new
+    Prefix(PrefixOp, Box<Expr>),
+    Postfix(Box<Expr>, PostfixOp),
+}
+#[derive(Debug)]
+pub enum PrefixOp {
+    Neg,
+}
+#[derive(Debug)]
+pub enum PostfixOp {
+    Fac,
 }
 
 /// Grammar:
@@ -102,12 +116,29 @@ impl Parser {
     /// (-)? `power`
     /// example: $ a $ | $ -a $ | $ -a^b $ | $ (a-b)^c $
     fn unary(&mut self) -> Result<Expr, ParseError> {
-        // if current position is minus, re-run this function and make negative.
-        if matches!(self.peek(), Some(Token::Minus)) {
+        // // if current position is minus, re-run this function and make negative.
+        // if matches!(self.peek(), Some(Token::Minus)) {
+        //     self.advance();
+        //     let inner = self.unary()?;
+        //     return Ok(Expr::Neg(Box::new(inner)));
+        // }
+
+        if self.peek().is_some_and(|t| t == &Token::Minus) {
             self.advance();
             let inner = self.unary()?;
-            return Ok(Expr::Neg(Box::new(inner)));
+            return Ok(Expr::Prefix(PrefixOp::Neg, Box::new(inner)));
         }
+        // TODO: Use this instead when more `PrefixOp` exist
+        // if self.peek().is_some() {
+        //     match self.peek().unwrap() {
+        //         Token::Minus => {
+        //             self.advance();
+        //             let inner = self.unary()?;
+        //             return Ok(Expr::Prefix(PrefixOp::Neg, Box::new(inner)));
+        //         }
+        //         _ => {}
+        //     }
+        // }
         self.power()
     }
 
@@ -115,7 +146,8 @@ impl Parser {
     /// `primary`, followed by (^`unary`)?
     /// example: $ a $  | $ a^b $ | $ (a-b)^c $ | $ -(a+b) $
     fn power(&mut self) -> Result<Expr, ParseError> {
-        let base = self.primary()?;
+        // let base = self.primary()?;
+        let base = self.postfix()?; // `self.postfix()` will do `self.primary()` instead
         // if current is a caret/power('^'), run `unary()` on the _exponent_.
         if matches!(self.peek(), Some(Token::Caret)) {
             self.advance();
@@ -142,6 +174,23 @@ impl Parser {
             Some(t) => Err(ParseError::UnexpectedToken(t.to_string(), self.pos - 1)),
             None => Err(ParseError::UnexpectedEnd),
         }
+    }
+
+    // ----------- new -------------
+
+    /// Will work as a _hub_ for more _"advanced"_ operators
+    ///
+    /// Similar to `self.unary()`, except that it first advances,
+    /// and then checks for `Expr::PostFix` instead
+    fn postfix(&mut self) -> Result<Expr, ParseError> {
+        let mut expr = self.primary()?;
+
+        if self.peek().is_some_and(|t| t == &Token::Bang) {
+            self.advance();
+            expr = Expr::Postfix(Box::new(expr), PostfixOp::Fac);
+        }
+
+        Ok(expr)
     }
 }
 

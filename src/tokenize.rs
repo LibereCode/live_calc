@@ -16,6 +16,8 @@ pub enum Token {
     Caret,
     LParen,
     RParen,
+    // new
+    Bang,
 }
 
 impl fmt::Display for Token {
@@ -29,6 +31,7 @@ impl fmt::Display for Token {
             Token::Caret => write!(f, "^"),
             Token::LParen => write!(f, " ("),
             Token::RParen => write!(f, ") "),
+            Token::Bang => write!(f, "!"),
         }
     }
 }
@@ -55,6 +58,9 @@ pub enum ParseError {
     UnexpectedEnd,
     DivisionByZero,
     NonFinite,
+    // new
+    BadFactorial(String),
+    ToBigFactorial(usize, String),
 }
 
 impl fmt::Display for ParseError {
@@ -71,6 +77,13 @@ impl fmt::Display for ParseError {
             ParseError::DivisionByZero => write!(f, "division by zero"),
             ParseError::NonFinite => {
                 write!(f, "result is not a finite number (overflow or undefined)")
+            }
+            // new
+            ParseError::BadFactorial(s) => {
+                write!(f, "bad factorial with number '{s}'")
+            }
+            ParseError::ToBigFactorial(i, s) => {
+                write!(f, "attempted too big factorial '{i}', ({i} - 1)! = {s}")
             }
         }
     }
@@ -91,6 +104,7 @@ pub fn tokenize(input: &str) -> Result<Vec<Token>, ParseError> {
             '^' => tokens.push(Token::Caret),
             '(' => tokens.push(Token::LParen),
             ')' => tokens.push(Token::RParen),
+            '!' => tokens.push(Token::Bang),
             // Ignore whitespace
             ' ' | '\t' | '\n' => {}
             // Will do the whole number in one go.

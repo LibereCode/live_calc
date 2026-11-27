@@ -11,14 +11,58 @@
 //!     - [ ] _Vector_ **vector multiplication** $ \[a, b\] * \[b, c\] $
 
 use crate::{
-    parse::{Expr, Op, Parser},
+    parse::{Expr, Op, Parser, PostfixOp, PrefixOp},
     tokenize::ParseError,
 };
+
+trait Factorial {
+    /// # TODO:
+    /// - [ ] Make it handle very big numbers by cheating:
+    ///   - If number gets to big, divide it before continue, and
+    ///     create a _tuple_ consisting of `(base: i64, exponent: i64)` or something
+    fn factorial(self) -> Result<i128, ParseError>
+    where
+        Self: std::marker::Sized;
+}
+
+impl Factorial for u8 {
+    fn factorial(self) -> Result<i128, ParseError> {
+        let limit = 8_683_317_618_811_886_000_000_000_000_000_000_000; // 33!
+        match self {
+            0 => Ok(1i128),
+            // n if n >= 3 => Err(ParseError::OverflowMultiply(n.to_string())),
+            n => Ok(i128::from(n) * {
+                let fac = (n - 1).factorial()?;
+                if fac >= limit {
+                    return Err(ParseError::ToBigFactorial(n as usize, fac.to_string()));
+                }
+                fac
+            }),
+        }
+    }
+}
+
+fn f64_factorial(inner: f64) -> Result<f64, ParseError> {
+    if !inner.is_finite() || inner < 0.0 || inner.abs().fract() > f64::EPSILON {
+        return Err(ParseError::BadFactorial(inner.to_string()));
+    }
+    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+    // Will work, because sign is checked earlier (must be positive), and will fail later if too big
+    let n = (inner as u8).factorial()?;
+
+    #[allow(clippy::cast_precision_loss)]
+    Ok(n as f64)
+}
 
 pub fn eval(expr: &Expr) -> Result<f64, ParseError> {
     let value = match expr {
         Expr::Num(n) => *n,
-        Expr::Neg(inner) => -eval(inner)?,
+        Expr::Prefix(op, inner) => match op {
+            PrefixOp::Neg => -eval(inner)?,
+        },
+        Expr::Postfix(inner, op) => match op {
+            PostfixOp::Fac => f64_factorial(eval(inner)?)?,
+        },
         Expr::Binary(lhs, op, rhs) => {
             let a = eval(lhs)?;
             let b = eval(rhs)?;
@@ -74,6 +118,8 @@ impl EvalParse for Parser {
 /// ---------- Tests ----------
 #[cfg(test)]
 mod tests {
+    use std::assert_matches;
+
     use crate::tokenize::tokenize;
 
     use super::*;
@@ -111,34 +157,19 @@ mod tests {
 
     #[test]
     fn syntax_errors() {
-        assert!(matches!(evaluate(""), Err(ParseError::UnexpectedEnd)));
-        assert!(matches!(evaluate("(1 + 2"), Err(ParseError::UnexpectedEnd)));
-        assert!(matches!(
-            evaluate("1 2"),
-            Err(ParseError::UnexpectedToken(_, _))
-        ));
-        assert!(matches!(
-            evaluate("3 $ 4"),
-            Err(ParseError::UnexpectedChar('$', _))
-        ));
-        assert!(matches!(
-            evaluate("1.2.3"),
-            Err(ParseError::InvalidNumber(_))
-        ));
+        assert_matches!(evaluate(""), Err(ParseError::UnexpectedEnd));
+        assert_matches!(evaluate("(1 + 2"), Err(ParseError::UnexpectedEnd));
+        assert_matches!(evaluate("1 2"), Err(ParseError::UnexpectedToken(_, _)));
+        assert_matches!(evaluate("3 $ 4"), Err(ParseError::UnexpectedChar('$', _)));
+        assert_matches!(evaluate("1.2.3"), Err(ParseError::InvalidNumber(_)));
     }
 
     #[test]
     fn math_errors() {
-        assert!(matches!(
-            evaluate("4 / (2 - 2)"),
-            Err(ParseError::DivisionByZero)
-        ));
-        assert!(matches!(
-            evaluate("0 ^ -1"),
-            Err(ParseError::DivisionByZero)
-        ));
-        assert!(matches!(evaluate("(-8) ^ 0.5"), Err(ParseError::NonFinite)));
-        assert!(matches!(evaluate("10 ^ 400"), Err(ParseError::NonFinite)));
+        assert_matches!(evaluate("4 / (2 - 2)"), Err(ParseError::DivisionByZero));
+        assert_matches!(evaluate("0 ^ -1"), Err(ParseError::DivisionByZero));
+        assert_matches!(evaluate("(-8) ^ 0.5"), Err(ParseError::NonFinite));
+        assert_matches!(evaluate("10 ^ 400"), Err(ParseError::NonFinite));
     }
 
     #[test]
@@ -152,5 +183,20 @@ mod tests {
             evaluate("((1-6/2)^3 * (2 + 3))^2").unwrap(),
             (-2.0f64.powf(3.0) * 5.0).powf(2.0) // = 1600
         );
+    }
+
+    #[test]
+    fn factorials() {
+        // i64
+        assert_matches!(0.factorial(), Ok(1));
+        assert_matches!(1.factorial(), Ok(1));
+        assert_matches!(4.factorial(), Ok(24));
+        assert_matches!(10.factorial(), Ok(3_628_800));
+
+        // f64
+        assert_matches!(f64_factorial(0.0), Ok(1.0));
+        assert_matches!(f64_factorial(1.0), Ok(1.0));
+        assert_matches!(f64_factorial(3.0), Ok(6.0));
+        assert_matches!(f64_factorial(7.0), Ok(5_040.0));
     }
 }
