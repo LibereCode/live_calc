@@ -2,10 +2,17 @@
 //!
 //! This module turns `Expr` into `f64`
 //! This `f64` is basically the result of the `Expr` $ equation $.
+//!
+//! # TODO:
+//! - [ ] **Factorial** $ a! $
+//! - [ ] **Vectors** $ \[a,b,...\] $
+//!   Will initially just do a **vec2**
+//!     - [ ] _Vector_ **scalar multiplication** $ a * \[b,c,...\] $
+//!     - [ ] _Vector_ **vector multiplication** $ \[a, b\] * \[b, c\] $
 
 use crate::{
     parse::{Expr, Op, Parser},
-    tokenize::{ParseError, tokenize},
+    tokenize::ParseError,
 };
 
 pub fn eval(expr: &Expr) -> Result<f64, ParseError> {
@@ -30,12 +37,6 @@ pub fn eval(expr: &Expr) -> Result<f64, ParseError> {
                         return Err(ParseError::DivisionByZero);
                     }
                     a.powf(b)
-                    // Grammar:
-                    //   expr    := term (('+' | '-') term)*
-                    //   term    := unary (('*' | '/') unary)*
-                    //   unary   := '-' unary | power
-                    //   power   := primary ('^' unary)?
-                    //   primary := NUMBER | '(' expr ')'
                 }
             }
         }
@@ -51,11 +52,11 @@ pub fn eval(expr: &Expr) -> Result<f64, ParseError> {
 pub trait EvalParse {
     /// # Usage
     /// ```rust
-    /// // Please avoid using `unwrap()`, do a better error-handling instead
+    /// // `unwrap_or_default()` works, but there exist better alternatives.
     /// let math_str: &str = "1+1";
     /// let tokens: Vec<Token> = tokenize(math_str).unwrap_or_default();
     /// let parser: Parser = tokens.parse();
-    /// let eval: f64 = parser.eval().unwrap();
+    /// let eval: f64 = parser.eval().unwrap_or_default();
     /// ```
     /// ---
     ///
@@ -70,17 +71,18 @@ impl EvalParse for Parser {
     }
 }
 
-pub fn evaluate(input: &str) -> Result<f64, ParseError> {
-    let tokens = tokenize(input)?;
-    let expr = Parser::new(tokens).parse()?;
-    eval(&expr)
-}
-
 /// ---------- Tests ----------
 #[cfg(test)]
 mod tests {
+    use crate::tokenize::tokenize;
 
     use super::*;
+
+    fn evaluate(input: &str) -> Result<f64, ParseError> {
+        let tokens = tokenize(input)?;
+        let expr = Parser::new(tokens).parse()?;
+        eval(&expr)
+    }
 
     fn approx(a: f64, b: f64) -> bool {
         (a - b).abs() < f64::EPSILON

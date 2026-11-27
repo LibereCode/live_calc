@@ -9,7 +9,11 @@ use crossterm::{
     terminal::{self},
 };
 
-use crate::eval::evaluate;
+use crate::{
+    eval::EvalParse,
+    parse::ParseTokens,
+    tokenize::{ParseError, Token, TokensToString, tokenize},
+};
 
 pub enum Mode {
     Normal,
@@ -64,7 +68,8 @@ pub fn live_calc() -> io::Result<()> {
     let mut mode_symbol = "";
     let mut raw = String::new();
     let mut message = String::new();
-    let mut eval = 0f64;
+    let mut tokens: Result<Vec<Token>, ParseError>;
+    let mut eval: Result<String, String> = Ok(String::new());
 
     println!("-----\r");
     redraw_line(mode_symbol, &raw, &message);
@@ -93,7 +98,11 @@ pub fn live_calc() -> io::Result<()> {
                             mode_symbol = ""; // <- to update quicker
                         }
                         KeyCode::Enter => {
-                            println!("{CLEAR_LINE}\n\n{CLEAR_LINE}{}\r{eval}", cursor::MoveUp(2));
+                            println!(
+                                "{CLEAR_LINE}\n\n{CLEAR_LINE}{}\r{}",
+                                cursor::MoveUp(2),
+                                eval.unwrap_or_default()
+                            );
                         }
                         _ => {}
                     }
@@ -116,8 +125,21 @@ pub fn live_calc() -> io::Result<()> {
                 }
             }
 
-            eval = evaluate(&raw).unwrap_or_default();
-            message = raw.clone() + " = " + &eval.to_string();
+            tokens = tokenize(&raw);
+            eval = match &tokens {
+                Ok(v) => match v.clone().parse().eval() {
+                    Ok(n) => Ok(n.to_string()),
+                    Err(e) => Err(e.to_string()),
+                },
+                Err(e) => Err(e.to_string()),
+            };
+            message = match &tokens {
+                Ok(t) => t.to_string(),
+                Err(_) => raw.clone(),
+            } + " = "
+                + match &eval {
+                    Ok(s) | Err(s) => s,
+                };
             redraw_line(mode_symbol, &raw, &message);
         }
     }

@@ -69,12 +69,6 @@ impl Parser {
                 Some(Token::Minus) => Op::Sub,
                 _ => break,
             };
-            // Grammar:
-            //   expr    := term (('+' | '-') term)*
-            //   term    := unary (('*' | '/') unary)*
-            //   unary   := '-' unary | power
-            //   power   := primary ('^' unary)?
-            //   primary := NUMBER | '(' expr ')'
             self.advance();
             let rhs = self.term()?;
             lhs = Expr::Binary(Box::new(lhs), op, Box::new(rhs));
@@ -122,7 +116,7 @@ impl Parser {
     /// example: $ a $  | $ a^b $ | $ (a-b)^c $ | $ -(a+b) $
     fn power(&mut self) -> Result<Expr, ParseError> {
         let base = self.primary()?;
-        // if current is a bracket, run `unary()` on the bracket's first item.
+        // if current is a caret/power('^'), run `unary()` on the _exponent_.
         if matches!(self.peek(), Some(Token::Caret)) {
             self.advance();
             let exp = self.unary()?;
@@ -154,7 +148,7 @@ impl Parser {
 pub trait ParseTokens {
     /// # Usage
     /// ```rust
-    /// // Please avoid using `unwrap()`, do a better error-handling instead
+    /// // `unwrap_or_default()` works, but there exist better alternatives.
     /// let math_str: &str = "1+1";
     /// let tokens: Vec<Token> = tokenize(math_str).unwrap_or_default();
     /// let parser: Parser = tokens.parse();

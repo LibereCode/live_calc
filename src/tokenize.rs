@@ -6,6 +6,7 @@
 use std::fmt;
 
 #[derive(Debug, Clone, PartialEq)]
+/// Named after **sign** instead of **operator**, because of: _See_ `enum parse::Op`
 pub enum Token {
     Num(f64),
     Plus,
@@ -83,35 +84,16 @@ pub fn tokenize(input: &str) -> Result<Vec<Token>, ParseError> {
     while i < chars.len() {
         let c = chars[i];
         match c {
-            ' ' | '\t' | '\n' => i += 1,
-            '+' => {
-                tokens.push(Token::Plus);
-                i += 1;
-            }
-            '-' => {
-                tokens.push(Token::Minus);
-                i += 1;
-            }
-            '*' => {
-                tokens.push(Token::Star);
-                i += 1;
-            }
-            '/' => {
-                tokens.push(Token::Slash);
-                i += 1;
-            }
-            '^' => {
-                tokens.push(Token::Caret);
-                i += 1;
-            }
-            '(' => {
-                tokens.push(Token::LParen);
-                i += 1;
-            }
-            ')' => {
-                tokens.push(Token::RParen);
-                i += 1;
-            }
+            '+' => tokens.push(Token::Plus),
+            '-' => tokens.push(Token::Minus),
+            '*' => tokens.push(Token::Star),
+            '/' => tokens.push(Token::Slash),
+            '^' => tokens.push(Token::Caret),
+            '(' => tokens.push(Token::LParen),
+            ')' => tokens.push(Token::RParen),
+            // Ignore whitespace
+            ' ' | '\t' | '\n' => {}
+            // Will do the whole number in one go.
             '0'..='9' | '.' => {
                 let start = i;
                 while i < chars.len() && (chars[i].is_ascii_digit() || chars[i] == '.') {
@@ -122,9 +104,12 @@ pub fn tokenize(input: &str) -> Result<Vec<Token>, ParseError> {
                     .parse::<f64>()
                     .map_err(|_| ParseError::InvalidNumber(s.clone()))?;
                 tokens.push(Token::Num(n));
+                i -= 1; // <- dumb fix
             }
-            other => return Err(ParseError::UnexpectedChar(other, i)),
+            // Will stop parsing/loop
+            c => return Err(ParseError::UnexpectedChar(c, i)),
         }
+        i += 1;
     }
 
     Ok(tokens)
